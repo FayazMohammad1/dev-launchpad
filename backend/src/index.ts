@@ -12,12 +12,14 @@ const ai = new GoogleGenAI({
 });
 
 async function main() {
-  const response = await ai.models.generateContent({
+  const response = await ai.models.generateContentStream({
     model: "gemini-2.5-flash",
-    contents: "Hello",
+    contents: "create todo application",
   });
 
-  console.log(response.text);
+  for await (const chunk of response) {
+    console.log(chunk.text);
+  }
 }
 
-main();
+await main();
