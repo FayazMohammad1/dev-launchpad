@@ -1,7 +1,18 @@
+import express from "express";
+import cors from "cors";
 import dotenv from "dotenv";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, createUserContent } from "@google/genai";
+
+import { getSystemPrompt } from "./prompts.js";
+import { basePrompt as nodeBasePrompt } from "./defaults/node.js";
+import { basePrompt as reactBasePrompt } from "./defaults/react.js";
+import { basePrompt as fullstackBasePrompt } from "./defaults/fullstack.js";
 
 dotenv.config();
+
+const app = express();
+app.use(cors());
+app.use(express.json());
 
 if (!process.env.GEMINI_API_KEY) {
   throw new Error("GEMINI_API_KEY is missing in .env file");
@@ -11,15 +22,86 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
-async function main() {
-  const response = await ai.models.generateContentStream({
-    model: "gemini-2.5-flash",
-    contents: "create todo application",
-  });
+app.post("/template", async (req, res) => {
+  const prompt = req.body.prompt;
 
-  for await (const chunk of response) {
-    console.log(chunk.text);
+  try {
+    const detect = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: createUserContent(prompt),
+      config: {
+        systemInstruction:
+          "Return EXACTLY one word: 'node', 'react', or 'fullstack'. " +
+          "Choose 'fullstack' if BOTH backend and frontend are needed. " +
+          "NEVER return anything else.",
+        thinkingConfig: { thinkingBudget: 0 }, // Optional: disables thinking for speed
+      },
+    });
+
+    const answer = detect.output_text[0].trim().toLowerCase();
+    console.log("Detected project type:", answer);
+
+    if (answer === "react") {
+      return res.json({
+        prompts: [
+          "Here is the project artifact:\n\n" + reactBasePrompt,
+        ],
+        uiPrompts: [reactBasePrompt],
+      });
+    }
+
+    if (answer === "node") {
+      return res.json({
+        prompts: [
+          "Here is the project artifact:\n\n" + nodeBasePrompt,
+        ],
+        uiPrompts: [nodeBasePrompt],
+      });
+    }
+
+    if (answer === "fullstack") {
+      return res.json({
+        prompts: [
+          "Here is the project artifact:\n\n" + fullstackBasePrompt,
+        ],
+        uiPrompts: [fullstackBasePrompt],
+      });
+    }
+
+    return res
+      .status(400)
+      .json({ error: "Unknown project type detected: " + answer });
+  } catch (err) {
+    console.error("Error in /template:", err);
+    return res.status(500).json({ error: "Template generation failed" });
   }
-}
+});
 
-await main();
+app.post("/chat", async (req, res) => {
+  const messages = req.body.messages; // messages = [{ role: "user", parts: [{ text: "..."}] }, ...]
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: messages, // Gemini accepts full structured history
+      config: {
+        systemInstruction: getSystemPrompt(),
+        thinkingConfig: { thinkingBudget: 0 },
+      },
+    });
+
+    return res.json({
+      response: response.response.text(),
+    });
+  } catch (err) {
+    console.error("Error in /chat:", err);
+    return res.status(500).json({ error: "Chat request failed" });
+  }
+});
+
+/* ---------------------------------------------------------
+   SERVER START
+--------------------------------------------------------- */
+app.listen(3000, () => {
+  console.log("Server running on port 3000");
+});
