@@ -78,26 +78,27 @@ app.post("/template", async (req, res) => {
 });
 
 app.post("/chat", async (req, res) => {
-  const messages = req.body.messages; // messages = [{ role: "user", parts: [{ text: "..."}] }, ...]
+  const raw = req.body.messages || [];
+  const messages = raw.map(toGeminiMessage);
 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: messages, // Gemini accepts full structured history
+      contents: messages,
       config: {
         systemInstruction: getSystemPrompt(),
         thinkingConfig: { thinkingBudget: 0 },
       },
     });
 
-    return res.json({
-      response: response.text,
-    });
+    console.log(response.text);
+    res.json({ response: response.text });
   } catch (err) {
     console.error("Error in /chat:", err);
-    return res.status(500).json({ error: "Chat request failed" });
+    res.status(500).json({ error: "Chat request failed" });
   }
 });
+
 
 /* ---------------------------------------------------------
    SERVER START
@@ -105,3 +106,31 @@ app.post("/chat", async (req, res) => {
 app.listen(3000, () => {
   console.log("Server running on port 3000");
 });
+
+function toGeminiMessage(input: any) {
+  if (input.parts) {
+    return {
+      role: input.role,
+      parts: input.parts.map((p: any) => ({ text: p.text ?? "" }))
+    };
+  }
+
+  if (input.content) {
+    return {
+      role: input.role,
+      parts: [{ text: input.content }]
+    };
+  }
+
+  if (typeof input.text === "string") {
+    return {
+      role: input.role || "user",
+      parts: [{ text: input.text }]
+    };
+  }
+
+  return {
+    role: "user",
+    parts: [{ text: "" }]
+  };
+}
