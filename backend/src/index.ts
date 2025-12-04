@@ -3,7 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { GoogleGenAI, createUserContent } from "@google/genai";
 
-import { getSystemPrompt } from "./prompts.js";
+import { BASE_PROMPT, getSystemPrompt } from "./prompts.js";
 import { basePrompt as nodeBasePrompt } from "./defaults/node.js";
 import { basePrompt as reactBasePrompt } from "./defaults/react.js";
 import { basePrompt as fullstackBasePrompt } from "./defaults/fullstack.js";
@@ -44,7 +44,7 @@ app.post("/template", async (req, res) => {
     if (answer === "react") {
       return res.json({
         prompts: [
-          "Here is the project artifact:\n\n" + reactBasePrompt,
+          BASE_PROMPT, `Here is an artifact that contains all files of the project visible to you.\nConsider the contents of ALL files in the project.\n\n${reactBasePrompt}\n\nHere is a list of files that exist on the file system but are not being shown to you:\n\n  - .gitignore\n  - package-lock.json\n`,
         ],
         uiPrompts: [reactBasePrompt],
       });
@@ -53,7 +53,7 @@ app.post("/template", async (req, res) => {
     if (answer === "node") {
       return res.json({
         prompts: [
-          "Here is the project artifact:\n\n" + nodeBasePrompt,
+          `Here is an artifact that contains all files of the project visible to you.\nConsider the contents of ALL files in the project.\n\n${nodeBasePrompt}\n\nHere is a list of files that exist on the file system but are not being shown to you:\n\n  - .gitignore\n  - package-lock.json\n`,
         ],
         uiPrompts: [nodeBasePrompt],
       });
@@ -62,7 +62,7 @@ app.post("/template", async (req, res) => {
     if (answer === "fullstack") {
       return res.json({
         prompts: [
-          "Here is the project artifact:\n\n" + fullstackBasePrompt,
+          BASE_PROMPT, `Here is an artifact that contains all files of the project visible to you.\nConsider the contents of ALL files in the project.\n\n${fullstackBasePrompt}\n\nHere is a list of files that exist on the file system but are not being shown to you:\n\n  - .gitignore\n  - package-lock.json\n`,
         ],
         uiPrompts: [fullstackBasePrompt],
       });
