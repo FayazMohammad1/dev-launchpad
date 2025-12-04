@@ -38,7 +38,7 @@ app.post("/template", async (req, res) => {
       },
     });
 
-    const answer = detect.output_text[0].trim().toLowerCase();
+    const answer = detect.text;
     console.log("Detected project type:", answer);
 
     if (answer === "react") {
@@ -91,7 +91,7 @@ app.post("/chat", async (req, res) => {
     });
 
     return res.json({
-      response: response.response.text(),
+      response: response.text,
     });
   } catch (err) {
     console.error("Error in /chat:", err);
