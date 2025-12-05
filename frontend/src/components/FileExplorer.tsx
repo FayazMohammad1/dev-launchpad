@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronRight, ChevronDown, Folder, File, Search } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, FolderOpen, File, Search } from 'lucide-react';
 
 interface FileNode {
   name: string;
@@ -82,6 +82,47 @@ function FileExplorer({ onFileSelect, selectedFile }: FileExplorerProps) {
     setExpandedFolders(newExpanded);
   };
 
+  const matchesQuery = (name: string, q: string) =>
+    name.toLowerCase().includes(q.trim().toLowerCase());
+
+  const filterNodes = (nodes: FileNode[], q: string): FileNode[] => {
+    if (!q.trim()) return nodes;
+    const out: FileNode[] = [];
+    for (const n of nodes) {
+      if (n.type === 'file') {
+        if (matchesQuery(n.name, q)) out.push(n);
+      } else {
+        const filteredChildren = n.children ? filterNodes(n.children, q) : [];
+        if (matchesQuery(n.name, q) || filteredChildren.length > 0) {
+          out.push({ ...n, children: filteredChildren });
+        }
+      }
+    }
+    return out;
+  };
+
+  // compute auto-expanded folders when searching so matches are visible
+  const getExpandedFromMatches = (nodes: FileNode[], q: string, parentPath = ''): Set<string> => {
+    const s = new Set<string>();
+    if (!q.trim()) return s;
+    for (const n of nodes) {
+      const path = parentPath ? `${parentPath}/${n.name}` : n.path;
+      if (n.type === 'folder') {
+        if (matchesQuery(n.name, q)) {
+          s.add(n.path);
+        }
+        if (n.children) {
+          const childSet = getExpandedFromMatches(n.children, q, n.path);
+          if (childSet.size > 0) {
+            s.add(n.path);
+            childSet.forEach((p) => s.add(p));
+          }
+        }
+      }
+    }
+    return s;
+  };
+
   const renderNode = (node: FileNode, depth: number = 0) => {
     const isExpanded = expandedFolders.has(node.path);
     const isSelected = selectedFile === node.path;
@@ -91,7 +132,8 @@ function FileExplorer({ onFileSelect, selectedFile }: FileExplorerProps) {
         <div key={node.path}>
           <div
             onClick={() => toggleFolder(node.path)}
-            className="flex items-center gap-2 px-2 py-1.5 hover:bg-[#21262d] cursor-pointer rounded group"
+            onMouseDown={(e) => e.preventDefault()}
+            className="flex items-center gap-2 px-2 py-1.5 hover:bg-[#21262d] cursor-pointer rounded group select-none"
             style={{ paddingLeft: `${depth * 12 + 8}px` }}
           >
             {isExpanded ? (
@@ -99,7 +141,11 @@ function FileExplorer({ onFileSelect, selectedFile }: FileExplorerProps) {
             ) : (
               <ChevronRight className="w-4 h-4 text-gray-400" />
             )}
-            <Folder className="w-4 h-4 text-blue-400" />
+            {isExpanded ? (
+              <FolderOpen className="w-4 h-4 text-blue-400" />
+            ) : (
+              <Folder className="w-4 h-4 text-blue-400" />
+            )}
             <span className="text-sm text-gray-300">{node.name}</span>
           </div>
           {isExpanded && node.children && (
