@@ -1,26 +1,15 @@
-import { useState } from 'react';
 import LandingPage from './pages/LandingPage';
 import Workspace from './pages/Workspace';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 function App() {
-  const [prompt, setPrompt] = useState<string | null>(null);
-
-  const handleGenerate = (userPrompt: string) => {
-    setPrompt(userPrompt);
-  };
-
-  const handleBack = () => {
-    setPrompt(null);
-  };
-
   return (
-    <>
-      {prompt ? (
-        <Workspace prompt={prompt} onBack={handleBack} />
-      ) : (
-        <LandingPage onGenerate={handleGenerate} />
-      )}
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route path='/' element={<LandingPage />} />
+        <Route path='/builder' element={<Workspace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

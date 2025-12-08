@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronRight, ChevronDown, Folder, FolderOpen, File, Search } from 'lucide-react';
+import fileContents from '../lib/fileContents';
 
 interface FileNode {
   name: string;
@@ -19,58 +20,52 @@ function FileExplorer({ onFileSelect, selectedFile }: FileExplorerProps) {
   );
   const [searchQuery, setSearchQuery] = useState('');
 
-  const fileStructure: FileNode[] = [
-    {
-      name: 'src',
-      type: 'folder',
-      path: 'src',
-      children: [
-        {
-          name: 'components',
-          type: 'folder',
-          path: 'src/components',
-          children: [
-            { name: 'App.tsx', type: 'file', path: 'src/components/App.tsx' },
-            { name: 'Header.tsx', type: 'file', path: 'src/components/Header.tsx' },
-            { name: 'Sidebar.tsx', type: 'file', path: 'src/components/Sidebar.tsx' },
-            { name: 'Button.tsx', type: 'file', path: 'src/components/Button.tsx' },
-          ],
-        },
-        {
-          name: 'styles',
-          type: 'folder',
-          path: 'src/styles',
-          children: [
-            { name: 'globals.css', type: 'file', path: 'src/styles/globals.css' },
-            { name: 'theme.css', type: 'file', path: 'src/styles/theme.css' },
-          ],
-        },
-        {
-          name: 'utils',
-          type: 'folder',
-          path: 'src/utils',
-          children: [
-            { name: 'helpers.ts', type: 'file', path: 'src/utils/helpers.ts' },
-            { name: 'constants.ts', type: 'file', path: 'src/utils/constants.ts' },
-          ],
-        },
-        { name: 'main.tsx', type: 'file', path: 'src/main.tsx' },
-        { name: 'App.tsx', type: 'file', path: 'src/App.tsx' },
-      ],
-    },
-    {
-      name: 'public',
-      type: 'folder',
-      path: 'public',
-      children: [
-        { name: 'favicon.ico', type: 'file', path: 'public/favicon.ico' },
-        { name: 'logo.svg', type: 'file', path: 'public/logo.svg' },
-      ],
-    },
-    { name: 'package.json', type: 'file', path: 'package.json' },
-    { name: 'tsconfig.json', type: 'file', path: 'tsconfig.json' },
-    { name: 'vite.config.ts', type: 'file', path: 'vite.config.ts' },
-  ];
+  const fileStructure: FileNode[] = useMemo(() => {
+    const map: Record<string, FileNode> = {};
+
+    // ensure at least some default entries from fileContents keys
+    const paths = Object.keys(fileContents || {});
+
+    for (const fullPath of paths) {
+      const parts = fullPath.split('/');
+      let currentPath = '';
+
+      for (let i = 0; i < parts.length; i++) {
+        const name = parts[i];
+        currentPath = currentPath ? `${currentPath}/${name}` : name;
+
+        if (!map[currentPath]) {
+          map[currentPath] = {
+            name,
+            type: i === parts.length - 1 ? 'file' : 'folder',
+            path: currentPath,
+            children: i === parts.length - 1 ? undefined : [],
+          };
+        }
+
+        if (i > 0) {
+          const parentPath = parts.slice(0, i).join('/');
+          const parent = map[parentPath];
+          if (parent && parent.children) {
+            const exists = parent.children.find((c) => c.path === currentPath);
+            if (!exists) parent.children.push(map[currentPath]);
+          }
+        }
+      }
+    }
+
+    // collect top-level nodes (no parent)
+    const topLevel = Object.values(map).filter((n) => !n.path.includes('/'));
+
+    // Also include some common root-level files if present
+    ['package.json', 'tsconfig.json', 'vite.config.ts', 'index.html'].forEach((f) => {
+      if (fileContents[f] && !topLevel.find((t) => t.path === f)) {
+        topLevel.push(map[f] || { name: f, type: 'file', path: f });
+      }
+    });
+
+    return topLevel;
+  }, [fileContents]);
 
   const toggleFolder = (path: string) => {
     const newExpanded = new Set(expandedFolders);

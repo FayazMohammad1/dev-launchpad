@@ -44,7 +44,7 @@ app.post("/template", async (req, res) => {
     if (answer === "react") {
       return res.json({
         prompts: [
-          BASE_PROMPT, `Here is an artifact that contains all files of the project visible to you.\nConsider the contents of ALL files in the project.\n\n${reactBasePrompt}\n\nHere is a list of files that exist on the file system but are not being shown to you:\n\n  - .gitignore\n  - package-lock.json\n`,
+          BASE_PROMPT, `Return all these files in output along with the new code generated. Here is an artifact that contains all files of the project visible to you.\nConsider the contents of ALL files in the project.\n\n${reactBasePrompt}\n\nHere is a list of files that exist on the file system but are not being shown to you:\n\n  - .gitignore\n  - package-lock.json\n`,
         ],
         uiPrompts: [reactBasePrompt],
       });
@@ -53,7 +53,7 @@ app.post("/template", async (req, res) => {
     if (answer === "node") {
       return res.json({
         prompts: [
-          `Here is an artifact that contains all files of the project visible to you.\nConsider the contents of ALL files in the project.\n\n${nodeBasePrompt}\n\nHere is a list of files that exist on the file system but are not being shown to you:\n\n  - .gitignore\n  - package-lock.json\n`,
+          `Return all these files in output along with the new code generated. Here is an artifact that contains all files of the project visible to you.\nConsider the contents of ALL files in the project.\n\n${nodeBasePrompt}\n\nHere is a list of files that exist on the file system but are not being shown to you:\n\n  - .gitignore\n  - package-lock.json\n`,
         ],
         uiPrompts: [nodeBasePrompt],
       });
@@ -62,7 +62,7 @@ app.post("/template", async (req, res) => {
     if (answer === "fullstack") {
       return res.json({
         prompts: [
-          BASE_PROMPT, `Here is an artifact that contains all files of the project visible to you.\nConsider the contents of ALL files in the project.\n\n${fullstackBasePrompt}\n\nHere is a list of files that exist on the file system but are not being shown to you:\n\n  - .gitignore\n  - package-lock.json\n`,
+          BASE_PROMPT, `Return all these files in output along with the new code generated. Here is an artifact that contains all files of the project visible to you.\nConsider the contents of ALL files in the project.\n\n${fullstackBasePrompt}\n\nHere is a list of files that exist on the file system but are not being shown to you:\n\n  - .gitignore\n  - package-lock.json\n`,
         ],
         uiPrompts: [fullstackBasePrompt],
       });

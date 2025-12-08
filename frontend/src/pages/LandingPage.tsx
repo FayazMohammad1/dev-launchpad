@@ -1,16 +1,84 @@
 import { useState } from 'react';
 import { Sparkles, Zap, Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { TEMPLATE_URL, CHAT_URL } from '../lib/config';
+import parseBoltArtifact from '../lib/boltParser';
+import fileContents from '../lib/fileContents';
 
-interface LandingPageProps {
-  onGenerate: (prompt: string) => void;
-}
-
-function LandingPage({ onGenerate }: LandingPageProps) {
+function LandingPage() {
   const [prompt, setPrompt] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
-  const handleSubmit = () => {
-    if (prompt.trim()) {
-      onGenerate(prompt);
+  const handleSubmit = async () => {
+    if (!prompt.trim()) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch(TEMPLATE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data?.error || 'Template generation failed');
+        setLoading(false);
+        return;
+      }
+
+      // Assemble messages for /chat: include all template prompts then the user prompt
+      const messages: Array<{ role: string; content: string }> = [];
+      if (Array.isArray(data?.prompts)) {
+        data.prompts.forEach((p: any) => {
+          messages.push({ role: 'user', content: String(p) });
+        });
+      }
+      // user's original instruction as final message
+      messages.push({ role: 'user', content: prompt });
+
+      // Call /chat
+      let chatResponseBody: any = null;
+      try {
+        const chatRes = await fetch(CHAT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages }),
+        });
+
+        chatResponseBody = await chatRes.json();
+
+        if (!chatRes.ok) {
+          setError(chatResponseBody?.error || 'Chat generation failed');
+          setLoading(false);
+          return;
+        }
+      } catch (err: any) {
+        setError(err?.message || 'Chat network error');
+        setLoading(false);
+        return;
+      }
+
+      // Parse files from chat response (expected boltArtifact)
+      const responseText = chatResponseBody?.response || chatResponseBody?.text || '';
+      const files = parseBoltArtifact(responseText);
+
+      // Populate runtime fileContents so FileExplorer / Download use real files
+      Object.keys(files).forEach((path) => {
+        (fileContents as any)[path] = files[path];
+      });
+
+      // Navigate to builder and pass prompt + template + chat
+      navigate('/builder', { state: { prompt, template: data, chat: chatResponseBody, files } });
+    } catch (err: any) {
+      setError(err?.message || 'Network error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -46,13 +114,17 @@ function LandingPage({ onGenerate }: LandingPageProps) {
           />
 
           <div className="flex justify-end mt-4">
+            <div className="flex items-center gap-3 mr-4">
+              {error && <div className="text-red-400 text-sm">{error}</div>}
+            </div>
+
             <button
               onClick={handleSubmit}
-              disabled={!prompt.trim()}
+              disabled={!prompt.trim() || loading}
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
             >
               <Sparkles className="w-5 h-5" />
-              Generate
+              {loading ? 'Generating...' : 'Generate'}
             </button>
           </div>
         </div>

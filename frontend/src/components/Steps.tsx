@@ -2,6 +2,7 @@ import { Check, Loader2 } from 'lucide-react';
 
 interface StepsProps {
   prompt: string;
+  files?: Record<string, string> | null;
 }
 
 interface Step {
@@ -10,7 +11,7 @@ interface Step {
   status: 'completed' | 'in-progress' | 'pending';
 }
 
-function Steps({ prompt }: StepsProps) {
+function Steps({ prompt, files }: StepsProps) {
   const steps: Step[] = [
     { id: 1, title: 'Analyzing requirements', status: 'completed' },
     { id: 2, title: 'Setting up project structure', status: 'completed' },
@@ -25,6 +26,9 @@ function Steps({ prompt }: StepsProps) {
       <div className="p-4 border-b border-[#30363d]">
         <h2 className="text-white font-semibold mb-2">Build Steps</h2>
         <p className="text-sm text-gray-400 line-clamp-2">{prompt}</p>
+        {files && (
+          <p className="text-xs text-gray-500 mt-2">Files: {Object.keys(files).length}</p>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
@@ -67,6 +71,16 @@ function Steps({ prompt }: StepsProps) {
                 </h3>
                 {step.status === 'in-progress' && (
                   <p className="text-xs text-gray-400 mt-1">Processing...</p>
+                )}
+                {step.id === 3 && files && (
+                  <div className="mt-2 text-xs text-gray-400">
+                    <div className="font-medium text-white">Generated files</div>
+                    <ul className="list-disc list-inside mt-1">
+                      {Object.keys(files).slice(0, 20).map((f) => (
+                        <li key={f} className="truncate max-w-[220px]">{f}</li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
               </div>
             </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, Code, Database, Settings, Github, Upload, Download } from 'lucide-react';
 import JSZip from 'jszip';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
@@ -9,14 +10,16 @@ import CodeEditor from '../components/CodeEditor';
 import Terminal from '../components/Terminal';
 import Preview from '../components/Preview';
 
-interface WorkspaceProps {
-  prompt: string;
-  onBack: () => void;
-}
+interface WorkspaceProps {}
 
 type ViewMode = 'code' | 'preview' | 'database' | 'settings';
 
-function Workspace({ prompt, onBack }: WorkspaceProps) {
+function Workspace(_: WorkspaceProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const prompt = (location.state && (location.state as any).prompt) || '';
+  const files = (location.state && (location.state as any).files) || null;
+
   const [viewMode, setViewMode] = useState<ViewMode>('code');
   const [selectedFile, setSelectedFile] = useState<string>('src/App.tsx');
   const [terminals, setTerminals] = useState<string[]>(['Terminal 1']);
@@ -27,6 +30,10 @@ function Workspace({ prompt, onBack }: WorkspaceProps) {
 
   const removeTerminal = (index: number) => {
     setTerminals(terminals.filter((_, i) => i !== index));
+  };
+
+  const handleBack = () => {
+    navigate('/');
   };
 
   const handleDownload = async () => {
@@ -64,7 +71,7 @@ function Workspace({ prompt, onBack }: WorkspaceProps) {
       <div className="bg-[#161b22] border-b border-[#30363d] px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={onBack}
+            onClick={handleBack}
             className="text-gray-400 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -148,20 +155,20 @@ function Workspace({ prompt, onBack }: WorkspaceProps) {
         <PanelGroup direction="horizontal">
           
           {/* Left Sidebar */}
-          <Panel defaultSize={25} minSize={25} maxSize={25}>
+          <Panel defaultSize={20} minSize={20} maxSize={20}>
             <div className="h-full bg-[#0d1117] border-r border-[#30363d]">
-              <Steps prompt={prompt} />
+              <Steps prompt={prompt} files={files} />
             </div>
           </Panel>
 
-          <PanelResizeHandle className="w-1 bg-[#30363d] hover:bg-blue-600 transition-colors cursor-col-resize" />
+          {/* <PanelResizeHandle className="w-1 bg-[#30363d] hover:bg-blue-600 transition-colors cursor-col-resize" /> */}
 
           {/* Right Side - Editor + Preview */}
-          <Panel defaultSize={75}>
+          <Panel defaultSize={80}>
             <PanelGroup direction="horizontal">
               {viewMode === 'code' && (
                 <>
-                  <Panel defaultSize={25} minSize={15} maxSize={40}>
+                  <Panel defaultSize={20} minSize={20} maxSize={30}>
                     <div className="h-full bg-[#0d1117] border-r border-[#30363d]">
                       <FileExplorer onFileSelect={setSelectedFile} selectedFile={selectedFile} />
                     </div>
