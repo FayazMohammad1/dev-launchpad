@@ -1,25 +1,25 @@
-import { useState } from "react";
-import { ArrowLeft, Eye, Code, Database, Settings, Github, Upload, Download } from "lucide-react";
-import JSZip from "jszip";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { useState } from 'react';
+import { ArrowLeft, Eye, Code, Database, Settings, Github, Upload, Download } from 'lucide-react';
+import JSZip from 'jszip';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 
-import Steps from "./Steps";
-import FileExplorer from "./FileExplorer";
-import CodeEditor from "./CodeEditor";
-import Terminal from "./Terminal";
-import Preview from "./Preview";
+import Steps from '../components/Steps';
+import FileExplorer from '../components/FileExplorer';
+import CodeEditor from '../components/CodeEditor';
+import Terminal from '../components/Terminal';
+import Preview from '../components/Preview';
 
 interface WorkspaceProps {
   prompt: string;
   onBack: () => void;
 }
 
-type ViewMode = "code" | "preview" | "database" | "settings";
+type ViewMode = 'code' | 'preview' | 'database' | 'settings';
 
 function Workspace({ prompt, onBack }: WorkspaceProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>("code");
-  const [selectedFile, setSelectedFile] = useState<string>("src/App.tsx");
-  const [terminals, setTerminals] = useState<string[]>(["Terminal 1"]);
+  const [viewMode, setViewMode] = useState<ViewMode>('code');
+  const [selectedFile, setSelectedFile] = useState<string>('src/App.tsx');
+  const [terminals, setTerminals] = useState<string[]>(['Terminal 1']);
 
   const addTerminal = () => {
     setTerminals([...terminals, `Terminal ${terminals.length + 1}`]);
@@ -34,19 +34,19 @@ function Workspace({ prompt, onBack }: WorkspaceProps) {
       const zip = new JSZip();
 
       // Dynamically import global file contents storage
-      const mod = await import("../lib/fileContents");
+      const mod = await import('../lib/fileContents');
       const files = mod.fileContents || {};
 
       Object.entries(files).forEach(([path, content]) => {
-        zip.file(path, content);
+        zip.file(path, content as string);
       });
 
-      const blob = await zip.generateAsync({ type: "blob" });
+      const blob = await zip.generateAsync({ type: 'blob' });
 
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
-      a.download = "project.zip";
+      a.download = 'project.zip';
 
       document.body.appendChild(a);
       a.click();
@@ -54,7 +54,7 @@ function Workspace({ prompt, onBack }: WorkspaceProps) {
 
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Download failed", error);
+      console.error('Download failed', error);
     }
   };
 
@@ -72,11 +72,11 @@ function Workspace({ prompt, onBack }: WorkspaceProps) {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setViewMode("preview")}
+              onClick={() => setViewMode('preview')}
               className={`px-3 py-1.5 rounded flex items-center gap-2 transition-colors ${
-                viewMode === "preview"
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-400 hover:text-white"
+                viewMode === 'preview'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-400 hover:text-white'
               }`}
             >
               <Eye className="w-4 h-4" />
@@ -84,11 +84,11 @@ function Workspace({ prompt, onBack }: WorkspaceProps) {
             </button>
 
             <button
-              onClick={() => setViewMode("code")}
+              onClick={() => setViewMode('code')}
               className={`px-3 py-1.5 rounded flex items-center gap-2 transition-colors ${
-                viewMode === "code"
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-400 hover:text-white"
+                viewMode === 'code'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-400 hover:text-white'
               }`}
             >
               <Code className="w-4 h-4" />
@@ -96,11 +96,11 @@ function Workspace({ prompt, onBack }: WorkspaceProps) {
             </button>
 
             <button
-              onClick={() => setViewMode("database")}
+              onClick={() => setViewMode('database')}
               className={`px-3 py-1.5 rounded flex items-center gap-2 transition-colors ${
-                viewMode === "database"
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-400 hover:text-white"
+                viewMode === 'database'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-400 hover:text-white'
               }`}
             >
               <Database className="w-4 h-4" />
@@ -108,11 +108,11 @@ function Workspace({ prompt, onBack }: WorkspaceProps) {
             </button>
 
             <button
-              onClick={() => setViewMode("settings")}
+              onClick={() => setViewMode('settings')}
               className={`px-3 py-1.5 rounded flex items-center gap-2 transition-colors ${
-                viewMode === "settings"
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-400 hover:text-white"
+                viewMode === 'settings'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-400 hover:text-white'
               }`}
             >
               <Settings className="w-4 h-4" />
@@ -159,7 +159,7 @@ function Workspace({ prompt, onBack }: WorkspaceProps) {
           {/* Right Side - Editor + Preview */}
           <Panel defaultSize={75}>
             <PanelGroup direction="horizontal">
-              {viewMode === "code" && (
+              {viewMode === 'code' && (
                 <>
                   <Panel defaultSize={25} minSize={15} maxSize={40}>
                     <div className="h-full bg-[#0d1117] border-r border-[#30363d]">
@@ -174,18 +174,14 @@ function Workspace({ prompt, onBack }: WorkspaceProps) {
               <Panel defaultSize={75}>
                 <PanelGroup direction="vertical">
                   <Panel defaultSize={70} minSize={30}>
-                    {viewMode === "preview" ? (
+                    {viewMode === 'preview' ? (
                       <Preview />
-                    ) : viewMode === "code" ? (
+                    ) : viewMode === 'code' ? (
                       <CodeEditor file={selectedFile} />
-                    ) : viewMode === "database" ? (
-                      <div className="h-full flex items-center justify-center text-gray-400">
-                        Database view coming soon
-                      </div>
+                    ) : viewMode === 'database' ? (
+                      <div className="h-full flex items-center justify-center text-gray-400">Database view coming soon</div>
                     ) : (
-                      <div className="h-full flex items-center justify-center text-gray-400">
-                        Settings view coming soon
-                      </div>
+                      <div className="h-full flex items-center justify-center text-gray-400">Settings view coming soon</div>
                     )}
                   </Panel>
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import LandingPage from './components/LandingPage';
-import Workspace from './components/Workspace';
+import LandingPage from './pages/LandingPage';
+import Workspace from './pages/Workspace';
 
 function App() {
   const [prompt, setPrompt] = useState<string | null>(null);

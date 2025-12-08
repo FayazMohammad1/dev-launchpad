@@ -65,9 +65,7 @@ function LandingPage({ onGenerate }: LandingPageProps) {
               </div>
               <h3 className="text-white font-medium">AI-Powered</h3>
             </div>
-            <p className="text-gray-400 text-sm">
-              Advanced AI generates production-ready code
-            </p>
+            <p className="text-gray-400 text-sm">Advanced AI generates production-ready code</p>
           </div>
 
           <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
@@ -77,9 +75,7 @@ function LandingPage({ onGenerate }: LandingPageProps) {
               </div>
               <h3 className="text-white font-medium">Real-time</h3>
             </div>
-            <p className="text-gray-400 text-sm">
-              Watch your application build in real-time
-            </p>
+            <p className="text-gray-400 text-sm">Watch your application build in real-time</p>
           </div>
 
           <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
@@ -89,9 +85,7 @@ function LandingPage({ onGenerate }: LandingPageProps) {
               </div>
               <h3 className="text-white font-medium">Production Ready</h3>
             </div>
-            <p className="text-gray-400 text-sm">
-              Clean, maintainable code ready to deploy
-            </p>
+            <p className="text-gray-400 text-sm">Clean, maintainable code ready to deploy</p>
           </div>
         </div>
       </div>

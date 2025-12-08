@@ -102,11 +102,10 @@ function FileExplorer({ onFileSelect, selectedFile }: FileExplorerProps) {
   };
 
   // compute auto-expanded folders when searching so matches are visible
-  const getExpandedFromMatches = (nodes: FileNode[], q: string, parentPath = ''): Set<string> => {
+  const getExpandedFromMatches = (nodes: FileNode[], q: string, _parentPath = ''): Set<string> => {
     const s = new Set<string>();
     if (!q.trim()) return s;
     for (const n of nodes) {
-      const path = parentPath ? `${parentPath}/${n.name}` : n.path;
       if (n.type === 'folder') {
         if (matchesQuery(n.name, q)) {
           s.add(n.path);
