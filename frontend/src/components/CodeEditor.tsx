@@ -1,26 +1,27 @@
 import Editor from "@monaco-editor/react";
 import { Copy, Check } from "lucide-react";
 import { useState, useEffect } from "react";
-import { fileContents } from "../lib/fileContents";
 
 interface CodeEditorProps {
   file: string;
+  files?: Record<string, string> | null;
 }
 
-function CodeEditor({ file }: CodeEditorProps) {
-  const [content, setContent] = useState<string>(fileContents[file] || "");
+function CodeEditor({ file, files }: CodeEditorProps) {
+  const [content, setContent] = useState<string>(
+    (files && files[file]) || ""
+  );
   const [copied, setCopied] = useState(false);
 
   // Load content when file changes
   useEffect(() => {
-    setContent(fileContents[file] || "");
-  }, [file]);
+    setContent((files && files[file]) || "");
+  }, [file, files]);
 
-  // Auto-save edits into global fileContents store
+  // Update content on change
   const handleChange = (value: string | undefined) => {
     const updated = value ?? "";
     setContent(updated);
-    fileContents[file] = updated; // update global storage
   };
 
   const handleCopy = () => {

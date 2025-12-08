@@ -3,7 +3,6 @@ import { Sparkles, Zap, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TEMPLATE_URL, CHAT_URL } from '../lib/config';
 import parseBoltArtifact from '../lib/boltParser';
-import fileContents from '../lib/fileContents';
 
 function LandingPage() {
   const [prompt, setPrompt] = useState('');
@@ -66,15 +65,22 @@ function LandingPage() {
 
       // Parse files from chat response (expected boltArtifact)
       const responseText = chatResponseBody?.response || chatResponseBody?.text || '';
-      const files = parseBoltArtifact(responseText);
+      const chatFiles = parseBoltArtifact(responseText);
 
-      // Populate runtime fileContents so FileExplorer / Download use real files
-      Object.keys(files).forEach((path) => {
-        (fileContents as any)[path] = files[path];
-      });
+      // Parse files from template uiPrompts
+      const templateFiles: Record<string, string> = {};
+      if (Array.isArray(data?.uiPrompts)) {
+        data.uiPrompts.forEach((prompt: string) => {
+          const parsed = parseBoltArtifact(prompt);
+          Object.assign(templateFiles, parsed);
+        });
+      }
 
-      // Navigate to builder and pass prompt + template + chat
-      navigate('/builder', { state: { prompt, template: data, chat: chatResponseBody, files } });
+      // Merge template files and chat files (chat files override template files)
+      const mergedFiles = { ...templateFiles, ...chatFiles };
+
+      // Navigate to builder and pass prompt + template + chat + merged files
+      navigate('/builder', { state: { prompt, template: data, chat: chatResponseBody, files: mergedFiles } });
     } catch (err: any) {
       setError(err?.message || 'Network error');
     } finally {

@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { ChevronRight, ChevronDown, Folder, FolderOpen, File, Search } from 'lucide-react';
-import fileContents from '../lib/fileContents';
 
 interface FileNode {
   name: string;
@@ -12,9 +11,10 @@ interface FileNode {
 interface FileExplorerProps {
   onFileSelect: (path: string) => void;
   selectedFile: string;
+  files?: Record<string, string> | null;
 }
 
-function FileExplorer({ onFileSelect, selectedFile }: FileExplorerProps) {
+function FileExplorer({ onFileSelect, selectedFile, files }: FileExplorerProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
     new Set(['src', 'src/components', 'src/styles'])
   );
@@ -23,8 +23,8 @@ function FileExplorer({ onFileSelect, selectedFile }: FileExplorerProps) {
   const fileStructure: FileNode[] = useMemo(() => {
     const map: Record<string, FileNode> = {};
 
-    // ensure at least some default entries from fileContents keys
-    const paths = Object.keys(fileContents || {});
+    // Get paths from provided files
+    const paths = Object.keys(files || {});
 
     for (const fullPath of paths) {
       const parts = fullPath.split('/');
@@ -57,15 +57,8 @@ function FileExplorer({ onFileSelect, selectedFile }: FileExplorerProps) {
     // collect top-level nodes (no parent)
     const topLevel = Object.values(map).filter((n) => !n.path.includes('/'));
 
-    // Also include some common root-level files if present
-    ['package.json', 'tsconfig.json', 'vite.config.ts', 'index.html'].forEach((f) => {
-      if (fileContents[f] && !topLevel.find((t) => t.path === f)) {
-        topLevel.push(map[f] || { name: f, type: 'file', path: f });
-      }
-    });
-
     return topLevel;
-  }, [fileContents]);
+  }, [files]);
 
   const toggleFolder = (path: string) => {
     const newExpanded = new Set(expandedFolders);

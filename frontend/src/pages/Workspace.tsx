@@ -19,6 +19,8 @@ function Workspace(_: WorkspaceProps) {
   const navigate = useNavigate();
   const prompt = (location.state && (location.state as any).prompt) || '';
   const files = (location.state && (location.state as any).files) || null;
+  const template = (location.state && (location.state as any).template) || null;
+  const chat = (location.state && (location.state as any).chat) || null;
 
   const [viewMode, setViewMode] = useState<ViewMode>('code');
   const [selectedFile, setSelectedFile] = useState<string>('src/App.tsx');
@@ -40,13 +42,11 @@ function Workspace(_: WorkspaceProps) {
     try {
       const zip = new JSZip();
 
-      // Dynamically import global file contents storage
-      const mod = await import('../lib/fileContents');
-      const files = mod.fileContents || {};
-
-      Object.entries(files).forEach(([path, content]) => {
-        zip.file(path, content as string);
-      });
+      if (files) {
+        Object.entries(files).forEach(([path, content]) => {
+          zip.file(path, content as string);
+        });
+      }
 
       const blob = await zip.generateAsync({ type: 'blob' });
 
@@ -157,7 +157,7 @@ function Workspace(_: WorkspaceProps) {
           {/* Left Sidebar */}
           <Panel defaultSize={20} minSize={20} maxSize={20}>
             <div className="h-full bg-[#0d1117] border-r border-[#30363d]">
-              <Steps prompt={prompt} files={files} />
+              <Steps prompt={prompt} files={files} uiPrompts={template?.uiPrompts} chat={chat} />
             </div>
           </Panel>
 
@@ -170,7 +170,7 @@ function Workspace(_: WorkspaceProps) {
                 <>
                   <Panel defaultSize={20} minSize={20} maxSize={30}>
                     <div className="h-full bg-[#0d1117] border-r border-[#30363d]">
-                      <FileExplorer onFileSelect={setSelectedFile} selectedFile={selectedFile} />
+                      <FileExplorer onFileSelect={setSelectedFile} selectedFile={selectedFile} files={files} />
                     </div>
                   </Panel>
 
@@ -184,7 +184,7 @@ function Workspace(_: WorkspaceProps) {
                     {viewMode === 'preview' ? (
                       <Preview />
                     ) : viewMode === 'code' ? (
-                      <CodeEditor file={selectedFile} />
+                      <CodeEditor file={selectedFile} files={files} />
                     ) : viewMode === 'database' ? (
                       <div className="h-full flex items-center justify-center text-gray-400">Database view coming soon</div>
                     ) : (
