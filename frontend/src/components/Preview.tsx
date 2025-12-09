@@ -1,6 +1,6 @@
 import { RefreshCw, ExternalLink } from 'lucide-react';
 
-// TODO: needs to work on this for complete implementation without mock preview ui
+// TODO: needs to work on this for complete implementation without mock preview ui (need to show console instead of terminal & if possible network tab for API calls checking)
 function Preview() {
   return (
     <div className="h-full flex flex-col bg-[#0d1117]">

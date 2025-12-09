@@ -127,7 +127,6 @@ function Steps({ prompt, files, uiPrompts, chat }: StepsProps) {
     let summary = `I've successfully generated your application with ${fileCount} files! `;
     
     if (chat && chat.response) {
-      const chatText = chat.response.substring(0, 200);
       return summary;
     }
     
