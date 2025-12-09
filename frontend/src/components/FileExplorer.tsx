@@ -14,7 +14,7 @@ interface FileExplorerProps {
   files?: Record<string, string> | null;
 }
 
-// TODO: at first i need folders and below that normal files
+// TODO: at first i need folders and below that normal files in alphabetical way (3 files are missing package-lock.json, .env, .gitignore)
 function FileExplorer({ onFileSelect, selectedFile, files }: FileExplorerProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
     new Set([])

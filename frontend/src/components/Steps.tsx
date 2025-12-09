@@ -15,6 +15,7 @@ interface Step {
   description?: string;
 }
 
+// TODO: needs to improve this for better understanding of user what had happened & remove fixed mock steps
 function Steps({ prompt, files, uiPrompts, chat }: StepsProps) {
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set([1]));
 

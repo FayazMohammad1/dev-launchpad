@@ -7,6 +7,7 @@ interface TerminalProps {
   onRemoveTerminal: (index: number) => void;
 }
 
+// TODO: make terminal interative if that can be handled by web containers
 function Terminal({ terminals, onAddTerminal, onRemoveTerminal }: TerminalProps) {
   const [activeTab, setActiveTab] = useState(0);
 
