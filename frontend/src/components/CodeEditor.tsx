@@ -30,6 +30,7 @@ function CodeEditor({ file, files }: CodeEditorProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // TODO: need to add html, css files
   const language =
     file.endsWith(".tsx") || file.endsWith(".ts")
       ? "typescript"
@@ -89,10 +90,10 @@ function CodeEditor({ file, files }: CodeEditorProps) {
           theme="vs-dark"
           onChange={handleChange}
           options={{
-            minimap: { enabled: false },
-            fontSize: 14,
+            minimap: { enabled: true },
+            fontSize: 13,
             lineNumbers: "on",
-            scrollBeyondLastLine: false,
+            scrollBeyondLastLine: true,
             automaticLayout: true,
             tabSize: 2,
             readOnly: false,

@@ -14,9 +14,10 @@ interface FileExplorerProps {
   files?: Record<string, string> | null;
 }
 
+// TODO: at first i need folders and below that normal files
 function FileExplorer({ onFileSelect, selectedFile, files }: FileExplorerProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
-    new Set(['src', 'src/components', 'src/styles'])
+    new Set([])
   );
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -70,6 +71,7 @@ function FileExplorer({ onFileSelect, selectedFile, files }: FileExplorerProps) 
     setExpandedFolders(newExpanded);
   };
 
+  // TODO: need to implement search for files
   const matchesQuery = (name: string, q: string) =>
     name.toLowerCase().includes(q.trim().toLowerCase());
 
