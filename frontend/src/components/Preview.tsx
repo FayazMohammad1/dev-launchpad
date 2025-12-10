@@ -20,13 +20,14 @@ function Preview({ webContainer }: PreviewProps) {
     }
 
     console.log('[preview] webContainer available, starting dev server setup');
+    const container = webContainer; // webContainer is defined past the guard
     let serverReadyUnsubscribe: (() => void) | undefined;
 
     async function installDependencies() {
       console.log('[preview] ===== STARTING NPM INSTALL =====');
       console.log('[preview] spawning npm install process...');
       
-      const installProcess = await webContainer.spawn('npm', ['install']);
+      const installProcess = await container.spawn('npm', ['install']);
       console.log('[preview] npm install process spawned successfully');
 
       // Pipe install output to console
@@ -55,7 +56,7 @@ function Preview({ webContainer }: PreviewProps) {
 
         console.log('[preview] step 1: checking for package.json...');
         try {
-          const packageJson = await webContainer.fs.readFile('package.json', 'utf-8');
+          const packageJson = await container.fs.readFile('package.json', 'utf-8');
           console.log('[preview] package.json found:', packageJson.substring(0, 200) + '...');
         } catch (pkgError) {
           console.error('[preview] package.json not found or unreadable:', pkgError);
@@ -70,7 +71,7 @@ function Preview({ webContainer }: PreviewProps) {
         }
 
         console.log('[preview] step 3: npm install successful, spawning dev server...');
-        const devProcess = await webContainer.spawn('npm', ['run', 'dev']);
+        const devProcess = await container.spawn('npm', ['run', 'dev']);
         console.log('[preview] dev server process spawned');
 
         // Pipe dev server output
@@ -85,7 +86,7 @@ function Preview({ webContainer }: PreviewProps) {
 
         // Listen for server-ready event
         console.log('[preview] step 4: listening for server-ready event...');
-        serverReadyUnsubscribe = webContainer.on('server-ready', (port, serverUrl) => {
+        serverReadyUnsubscribe = container.on('server-ready', (port, serverUrl) => {
           console.log('[preview] ===== SERVER READY EVENT FIRED =====');
           console.log(`[preview] Port: ${port}`);
           console.log(`[preview] URL: ${serverUrl}`);
