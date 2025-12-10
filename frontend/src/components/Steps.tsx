@@ -1,11 +1,20 @@
 import { Check, Loader2, ChevronDown } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+
+type ConversationMessage = {
+  role: 'user' | 'model';
+  content: string;
+};
 
 interface StepsProps {
   prompt: string;
   files?: Record<string, string> | null;
   uiPrompts?: string[];
   chat?: any;
+  messages?: ConversationMessage[];
+  onSendMessage?: (message: string) => Promise<boolean>;
+  sending?: boolean;
+  error?: string | null;
 }
 
 interface Step {
@@ -16,8 +25,26 @@ interface Step {
 }
 
 // TODO: needs to improve this for better understanding of user what had happened & remove fixed mock steps
-function Steps({ prompt, files, uiPrompts, chat }: StepsProps) {
+function Steps({ prompt, files, uiPrompts, chat, messages = [], onSendMessage, sending = false, error }: StepsProps) {
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set([1]));
+  const [messageInput, setMessageInput] = useState('');
+
+  const formattedMessages = useMemo(() => {
+    const stripTags = (text: string) => text
+      .replace(/<boltAction[^>]*>[\s\S]*?<\/boltAction>/gi, '')
+      .replace(/<boltArtifact[^>]*>|<\/boltArtifact>/gi, '')
+      .replace(/<[^>]+>/g, '')
+      .trim();
+
+    return messages.map((m) => {
+      if (m.role === 'model') {
+        const cleaned = stripTags(m.content || '');
+        const concise = cleaned.length > 600 ? cleaned.slice(0, 600) + '…' : cleaned;
+        return { ...m, content: concise || 'Model responded with changes.' };
+      }
+      return m;
+    });
+  }, [messages]);
 
   const toggleStep = (id: number) => {
     const newExpanded = new Set(expandedSteps);
@@ -133,6 +160,16 @@ function Steps({ prompt, files, uiPrompts, chat }: StepsProps) {
     return summary;
   };
 
+  const handleSend = async () => {
+    if (!onSendMessage) return;
+    const text = messageInput.trim();
+    if (!text || sending) return;
+    const ok = await onSendMessage(text);
+    if (ok) {
+      setMessageInput('');
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="p-4 border-b border-[#30363d]">
@@ -233,6 +270,62 @@ function Steps({ prompt, files, uiPrompts, chat }: StepsProps) {
             </p>
           </div>
         )}
+
+        <div className="mt-6 space-y-3 border-t border-[#30363d] pt-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-white font-semibold text-sm">Follow-up</h3>
+            {sending && <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />}
+          </div>
+
+          <div className="max-h-64 overflow-y-auto space-y-3 pr-1 bg-[#0f1319] border border-[#30363d] rounded p-3">
+            {formattedMessages.length === 0 && (
+              <p className="text-xs text-gray-500">Ask a follow-up to refine the app.</p>
+            )}
+
+            {formattedMessages.map((m, idx) => (
+              <div
+                key={idx}
+                className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[85%] space-y-1 rounded-lg px-3 py-2 text-xs leading-relaxed shadow-sm border ${
+                    m.role === 'user'
+                      ? 'bg-blue-600/20 border-blue-600/40 text-blue-100'
+                      : 'bg-[#151a21] border-[#2b323d] text-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide">
+                    <span className={m.role === 'user' ? 'text-blue-200' : 'text-purple-200'}>
+                      {m.role === 'user' ? 'You' : 'AI'}
+                    </span>
+                  </div>
+                  <p className="whitespace-pre-wrap">{m.content}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {error && <p className="text-xs text-red-400">{error}</p>}
+
+          <div className="space-y-2">
+            <textarea
+              value={messageInput}
+              onChange={(e) => setMessageInput(e.target.value)}
+              placeholder="Describe a change or ask a follow-up..."
+              className="w-full bg-[#0f1319] border border-[#30363d] rounded-lg p-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
+              rows={3}
+            />
+            <div className="flex justify-end">
+              <button
+                onClick={handleSend}
+                disabled={!messageInput.trim() || sending}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed rounded text-sm text-white transition-colors"
+              >
+                {sending ? 'Sending...' : 'Send'}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

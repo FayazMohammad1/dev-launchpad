@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, Code, Database, Settings, Github, Upload, Download } from 'lucide-react';
 import JSZip from 'jszip';
@@ -10,24 +10,65 @@ import CodeEditor from '../components/CodeEditor';
 import Terminal from '../components/Terminal';
 import Preview from '../components/Preview';
 import { useWebContainer } from '../hooks/useWebContainer';
+import parseBoltArtifact from '../lib/boltParser';
+import { CHAT_URL } from '../lib/config';
 
 interface WorkspaceProps {}
 
 type ViewMode = 'code' | 'preview' | 'database' | 'settings';
 
+type ChatMessage = {
+  role: 'user' | 'model';
+  content: string;
+};
+
 function Workspace(_: WorkspaceProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const prompt = (location.state && (location.state as any).prompt) || '';
-  const files = (location.state && (location.state as any).files) || null;
+  const initialFiles = (location.state && (location.state as any).files) || null;
   const template = (location.state && (location.state as any).template) || null;
   const chat = (location.state && (location.state as any).chat) || null;
 
   const [viewMode, setViewMode] = useState<ViewMode>('code');
   const [selectedFile, setSelectedFile] = useState<string>('src/App.tsx');
   const [terminals, setTerminals] = useState<string[]>(['Terminal 1']);
+  const [projectFiles, setProjectFiles] = useState<Record<string, string>>(
+    () => initialFiles || {}
+  );
 
-  const { webContainer, bootError } = useWebContainer(files);
+  const initialMessages = useMemo<ChatMessage[]>(() => {
+    const seeded: ChatMessage[] = [];
+
+    if (Array.isArray(template?.prompts)) {
+      template.prompts.forEach((p: any) => {
+        seeded.push({ role: 'user', content: String(p) });
+      });
+    }
+
+    if (prompt) {
+      seeded.push({ role: 'user', content: String(prompt) });
+    }
+
+    if (chat?.response || chat?.text) {
+      seeded.push({ role: 'model', content: String(chat.response || chat.text || '') });
+    }
+
+    return seeded;
+  }, [chat, prompt, template?.prompts]);
+
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [sending, setSending] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+
+  const { webContainer, bootError } = useWebContainer(projectFiles);
+
+  // Log boot issues to console only (UI overlay disabled per request)
+  useEffect(() => {
+    if (bootError) {
+      console.error('WebContainer boot error:', bootError);
+    }
+  }, [bootError]);
 
   const addTerminal = () => {
     setTerminals([...terminals, `Terminal ${terminals.length + 1}`]);
@@ -41,12 +82,60 @@ function Workspace(_: WorkspaceProps) {
     navigate('/');
   };
 
+  const handleFileChange = (path: string, content: string) => {
+    setProjectFiles((prev) => ({ ...prev, [path]: content }));
+  };
+
+  const handleSendFollowUp = async (text: string): Promise<boolean> => {
+    const trimmed = text.trim();
+    if (!trimmed) return false;
+
+    const pendingUser: ChatMessage = { role: 'user', content: trimmed };
+    const nextMessages = [...messages, pendingUser];
+    setMessages(nextMessages);
+    setSending(true);
+    setChatError(null);
+
+    try {
+      const res = await fetch(CHAT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: nextMessages }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Chat request failed');
+      }
+
+      const modelMessage: ChatMessage = {
+        role: 'model',
+        content: String(data?.response || data?.text || ''),
+      };
+
+      setMessages((prev) => [...prev, modelMessage]);
+
+      const newFiles = parseBoltArtifact(modelMessage.content || '');
+      if (Object.keys(newFiles).length > 0) {
+        setProjectFiles((prev) => ({ ...prev, ...newFiles }));
+      }
+
+      return true;
+    } catch (error: any) {
+      setChatError(error?.message || 'Failed to send message');
+      return false;
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleDownload = async () => {
     try {
       const zip = new JSZip();
 
-      if (files) {
-        Object.entries(files).forEach(([path, content]) => {
+      if (projectFiles) {
+        Object.entries(projectFiles).forEach(([path, content]) => {
           zip.file(path, content as string);
         });
       }
@@ -155,36 +244,22 @@ function Workspace(_: WorkspaceProps) {
 
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
-        {bootError && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#0d1117] z-50">
-            <div className="max-w-md bg-[#161b22] border border-red-500 rounded-lg p-6">
-              <h3 className="text-red-400 font-semibold mb-2">WebContainer Failed to Start</h3>
-              <p className="text-gray-300 text-sm mb-4">{bootError}</p>
-              <div className="text-gray-400 text-xs space-y-1">
-                <p>Possible causes:</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>Network connectivity to StackBlitz CDN blocked</li>
-                  <li>Ad blocker or browser extension interference</li>
-                  <li>Firewall or corporate proxy restrictions</li>
-                  <li>Browser doesn't support WebContainers</li>
-                </ul>
-                <p className="mt-3">Check the browser console for detailed logs.</p>
-              </div>
-              <button 
-                onClick={() => window.location.reload()} 
-                className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors w-full"
-              >
-                Retry
-              </button>
-            </div>
-          </div>
-        )}
+        {/* bootError overlay intentionally disabled; check console logs instead */}
         <PanelGroup direction="horizontal">
           
           {/* Left Sidebar */}
           <Panel defaultSize={20} minSize={20} maxSize={20}>
             <div className="h-full bg-[#0d1117] border-r border-[#30363d]">
-              <Steps prompt={prompt} files={files} uiPrompts={template?.uiPrompts} chat={chat} />
+              <Steps
+                prompt={prompt}
+                files={projectFiles}
+                uiPrompts={template?.uiPrompts}
+                chat={chat}
+                messages={messages}
+                sending={sending}
+                error={chatError}
+                onSendMessage={handleSendFollowUp}
+              />
             </div>
           </Panel>
 
@@ -197,7 +272,11 @@ function Workspace(_: WorkspaceProps) {
                 <>
                   <Panel defaultSize={20} minSize={20} maxSize={30}>
                     <div className="h-full bg-[#0d1117] border-r border-[#30363d]">
-                      <FileExplorer onFileSelect={setSelectedFile} selectedFile={selectedFile} files={files} />
+                      <FileExplorer
+                        onFileSelect={setSelectedFile}
+                        selectedFile={selectedFile}
+                        files={projectFiles}
+                      />
                     </div>
                   </Panel>
 
@@ -211,7 +290,11 @@ function Workspace(_: WorkspaceProps) {
                     {viewMode === 'preview' ? (
                       <Preview webContainer={webContainer} />
                     ) : viewMode === 'code' ? (
-                      <CodeEditor file={selectedFile} files={files} />
+                      <CodeEditor
+                        file={selectedFile}
+                        files={projectFiles}
+                        onContentChange={handleFileChange}
+                      />
                     ) : viewMode === 'database' ? (
                       <div className="h-full flex items-center justify-center text-gray-400">Database view coming soon</div>
                     ) : (

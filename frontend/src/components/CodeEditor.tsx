@@ -5,9 +5,10 @@ import { useState, useEffect } from "react";
 interface CodeEditorProps {
   file: string;
   files?: Record<string, string> | null;
+  onContentChange?: (path: string, content: string) => void;
 }
 
-function CodeEditor({ file, files }: CodeEditorProps) {
+function CodeEditor({ file, files, onContentChange }: CodeEditorProps) {
   const [content, setContent] = useState<string>(
     (files && files[file]) || ""
   );
@@ -22,6 +23,7 @@ function CodeEditor({ file, files }: CodeEditorProps) {
   const handleChange = (value: string | undefined) => {
     const updated = value ?? "";
     setContent(updated);
+    onContentChange?.(file, updated);
   };
 
   const handleCopy = () => {
