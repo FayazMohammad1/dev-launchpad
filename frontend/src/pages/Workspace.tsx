@@ -9,6 +9,7 @@ import FileExplorer from '../components/FileExplorer';
 import CodeEditor from '../components/CodeEditor';
 import Terminal from '../components/Terminal';
 import Preview from '../components/Preview';
+import { useWebContainer } from '../hooks/useWebContainer';
 
 interface WorkspaceProps {}
 
@@ -25,6 +26,8 @@ function Workspace(_: WorkspaceProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('code');
   const [selectedFile, setSelectedFile] = useState<string>('src/App.tsx');
   const [terminals, setTerminals] = useState<string[]>(['Terminal 1']);
+
+  const { webContainer, bootError } = useWebContainer(files);
 
   const addTerminal = () => {
     setTerminals([...terminals, `Terminal ${terminals.length + 1}`]);
@@ -152,6 +155,30 @@ function Workspace(_: WorkspaceProps) {
 
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
+        {bootError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-[#0d1117] z-50">
+            <div className="max-w-md bg-[#161b22] border border-red-500 rounded-lg p-6">
+              <h3 className="text-red-400 font-semibold mb-2">WebContainer Failed to Start</h3>
+              <p className="text-gray-300 text-sm mb-4">{bootError}</p>
+              <div className="text-gray-400 text-xs space-y-1">
+                <p>Possible causes:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Network connectivity to StackBlitz CDN blocked</li>
+                  <li>Ad blocker or browser extension interference</li>
+                  <li>Firewall or corporate proxy restrictions</li>
+                  <li>Browser doesn't support WebContainers</li>
+                </ul>
+                <p className="mt-3">Check the browser console for detailed logs.</p>
+              </div>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors w-full"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
         <PanelGroup direction="horizontal">
           
           {/* Left Sidebar */}
@@ -178,11 +205,11 @@ function Workspace(_: WorkspaceProps) {
                 </>
               )}
 
-              <Panel defaultSize={75}>
+              <Panel defaultSize={80}>
                 <PanelGroup direction="vertical">
                   <Panel defaultSize={70} minSize={30}>
                     {viewMode === 'preview' ? (
-                      <Preview />
+                      <Preview webContainer={webContainer} />
                     ) : viewMode === 'code' ? (
                       <CodeEditor file={selectedFile} files={files} />
                     ) : viewMode === 'database' ? (
