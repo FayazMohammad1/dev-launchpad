@@ -85,3 +85,26 @@ db: update schema with new foreign keys
 security: sanitize user input to prevent XSS
 security: update password hashing to stronger algorithm
 ```
+
+## issues
+
+Cannot find module './components/TodoForm'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+Unreachable code detected.(7027)
+Cannot find name 'className'.(2304)
+'>' expected.(1005)
+any
+
+
+Unreachable code detected.(7027)
+Operator '>' cannot be applied to types 'number' and '{ todos: any; "": boolean; "mt-8 text-center text-gray-500 text-lg italic": boolean; yet: any; Add: any; some: any; tasks: any; to: any; readonly started: void; }'.(2365)
+Operator '<' cannot be applied to types 'boolean' and 'RegExp'.(2365)
+Operator '<' cannot be applied to types 'boolean' and 'RegExp'.(2365)
+
+
+Cannot find name 'div'.(2304)
+type div = /*unresolved*/ any
+
+
+Cannot find name 'className'.(2304)
+'>' expected.(1005)
