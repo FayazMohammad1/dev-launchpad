@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { ChevronRight, ChevronDown, Folder, FolderOpen, File, Search } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { ChevronRight, ChevronDown, Folder, FolderOpen, File, Search, FileText } from 'lucide-react';
 
 interface FileNode {
   name: string;
@@ -14,12 +14,49 @@ interface FileExplorerProps {
   files?: Record<string, string> | null;
 }
 
-// TODO: at first i need folders and below that normal files in alphabetical way (3 files are missing package-lock.json, .env, .gitignore)
+interface SearchMatch {
+  filePath: string;
+  line: number;
+  lineContent: string;
+  matchIndex: number;
+}
+
+type TabType = 'files' | 'search';
+
+// TODO: (3 files are missing package-lock.json, .env, .gitignore)
 function FileExplorer({ onFileSelect, selectedFile, files }: FileExplorerProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
     new Set([])
   );
+  const [activeTab, setActiveTab] = useState<TabType>('files');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchMatches, setSearchMatches] = useState<SearchMatch[]>([]);
+  const [selectedMatchIndex, setSelectedMatchIndex] = useState<number>(0);
+
+  // Auto-expand folders when a file inside them is selected
+  useEffect(() => {
+    if (selectedFile && selectedFile.includes('/')) {
+      const parts = selectedFile.split('/');
+      const newExpanded = new Set(expandedFolders);
+      let currentPath = '';
+      
+      for (let i = 0; i < parts.length - 1; i++) {
+        currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i];
+        newExpanded.add(currentPath);
+      }
+      
+      setExpandedFolders(newExpanded);
+    }
+  }, [selectedFile]);
+
+  const sortNodes = (nodes: FileNode[]): FileNode[] => {
+    return [...nodes].sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === 'folder' ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  };
 
   const fileStructure: FileNode[] = useMemo(() => {
     const map: Record<string, FileNode> = {};
@@ -55,10 +92,19 @@ function FileExplorer({ onFileSelect, selectedFile, files }: FileExplorerProps) 
       }
     }
 
-    // collect top-level nodes (no parent)
+    // collect top-level nodes (no parent) and sort them
     const topLevel = Object.values(map).filter((n) => !n.path.includes('/'));
+    const sorted = sortNodes(topLevel);
 
-    return topLevel;
+    // recursively sort all children
+    const sortRecursive = (nodes: FileNode[]): FileNode[] => {
+      return nodes.map((node) => ({
+        ...node,
+        children: node.children ? sortRecursive(sortNodes(node.children)) : node.children,
+      }));
+    };
+
+    return sortRecursive(sorted);
   }, [files]);
 
   const toggleFolder = (path: string) => {
@@ -71,46 +117,109 @@ function FileExplorer({ onFileSelect, selectedFile, files }: FileExplorerProps) 
     setExpandedFolders(newExpanded);
   };
 
-  // TODO: need to implement search for files
-  const matchesQuery = (name: string, q: string) =>
-    name.toLowerCase().includes(q.trim().toLowerCase());
+  // Search across file contents
+  useEffect(() => {
+    if (activeTab === 'search' && searchQuery.trim()) {
+      const matches: SearchMatch[] = [];
+      const query = searchQuery.toLowerCase();
+      let matchIndex = 0;
 
-  const filterNodes = (nodes: FileNode[], q: string): FileNode[] => {
-    if (!q.trim()) return nodes;
-    const out: FileNode[] = [];
-    for (const n of nodes) {
-      if (n.type === 'file') {
-        if (matchesQuery(n.name, q)) out.push(n);
-      } else {
-        const filteredChildren = n.children ? filterNodes(n.children, q) : [];
-        if (matchesQuery(n.name, q) || filteredChildren.length > 0) {
-          out.push({ ...n, children: filteredChildren });
-        }
-      }
-    }
-    return out;
-  };
-
-  // compute auto-expanded folders when searching so matches are visible
-  const getExpandedFromMatches = (nodes: FileNode[], q: string, _parentPath = ''): Set<string> => {
-    const s = new Set<string>();
-    if (!q.trim()) return s;
-    for (const n of nodes) {
-      if (n.type === 'folder') {
-        if (matchesQuery(n.name, q)) {
-          s.add(n.path);
-        }
-        if (n.children) {
-          const childSet = getExpandedFromMatches(n.children, q, n.path);
-          if (childSet.size > 0) {
-            s.add(n.path);
-            childSet.forEach((p) => s.add(p));
+      Object.entries(files || {}).forEach(([filePath, content]) => {
+        const lines = content.split('\n');
+        lines.forEach((line, lineNumber) => {
+          if (line.toLowerCase().includes(query)) {
+            matches.push({
+              filePath,
+              line: lineNumber + 1,
+              lineContent: line.trim(),
+              matchIndex: matchIndex++,
+            });
           }
+        });
+      });
+
+      setSearchMatches(matches);
+      setSelectedMatchIndex(0);
+      
+      // Auto-select first match
+      if (matches.length > 0) {
+        const firstMatch = matches[0];
+        onFileSelect(firstMatch.filePath);
+        
+        // Wait for editor content to load before scrolling
+        const handleContentLoaded = () => {
+          window.dispatchEvent(new CustomEvent('scrollToLine', { detail: { line: firstMatch.line } }));
+          window.removeEventListener('editorContentLoaded', handleContentLoaded);
+        };
+        
+        window.addEventListener('editorContentLoaded', handleContentLoaded);
+        
+        // Fallback timeout in case event doesn't fire
+        setTimeout(() => {
+          window.removeEventListener('editorContentLoaded', handleContentLoaded);
+          window.dispatchEvent(new CustomEvent('scrollToLine', { detail: { line: firstMatch.line } }));
+        }, 150);
+      }
+    } else {
+      setSearchMatches([]);
+    }
+  }, [searchQuery, files, activeTab]);
+
+  // Keyboard navigation for search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (activeTab === 'search' && searchMatches.length > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          const newIndex = selectedMatchIndex < searchMatches.length - 1 ? selectedMatchIndex + 1 : 0;
+          const match = searchMatches[newIndex];
+          handleMatchSelect(match, newIndex);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          const newIndex = selectedMatchIndex > 0 ? selectedMatchIndex - 1 : searchMatches.length - 1;
+          const match = searchMatches[newIndex];
+          handleMatchSelect(match, newIndex);
+        } else if (e.key === 'Enter' && searchMatches[selectedMatchIndex]) {
+          e.preventDefault();
+          const match = searchMatches[selectedMatchIndex];
+          handleMatchSelect(match, selectedMatchIndex);
         }
       }
-    }
-    return s;
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab, searchMatches, selectedMatchIndex]);
+
+  const handleMatchSelect = (match: SearchMatch, index: number) => {
+    setSelectedMatchIndex(index);
+    onFileSelect(match.filePath);
+    
+    // Wait for editor content to load before scrolling
+    const handleContentLoaded = () => {
+      window.dispatchEvent(new CustomEvent('scrollToLine', { detail: { line: match.line } }));
+      window.removeEventListener('editorContentLoaded', handleContentLoaded);
+    };
+    
+    window.addEventListener('editorContentLoaded', handleContentLoaded);
+    
+    // Fallback timeout in case event doesn't fire
+    setTimeout(() => {
+      window.removeEventListener('editorContentLoaded', handleContentLoaded);
+      window.dispatchEvent(new CustomEvent('scrollToLine', { detail: { line: match.line } }));
+    }, 150);
   };
+
+  const groupMatchesByFile = useMemo(() => {
+    const grouped: Record<string, SearchMatch[]> = {};
+    searchMatches.forEach((match) => {
+      if (!grouped[match.filePath]) {
+        grouped[match.filePath] = [];
+      }
+      grouped[match.filePath].push(match);
+    });
+    return grouped;
+  }, [searchMatches]);
 
   const renderNode = (node: FileNode, depth: number = 0) => {
     const isExpanded = expandedFolders.has(node.path);
@@ -148,37 +257,125 @@ function FileExplorer({ onFileSelect, selectedFile, files }: FileExplorerProps) 
       <div
         key={node.path}
         onClick={() => onFileSelect(node.path)}
-        className={`flex items-center gap-2 px-2 py-1.5 hover:bg-[#21262d] cursor-pointer rounded ${
-          isSelected ? 'bg-[#21262d]' : ''
+        className={`flex items-center gap-2 px-2 py-1.5 hover:bg-[#21262d] cursor-pointer rounded transition-colors ${
+          isSelected ? 'bg-blue-600/20 border-l-2 border-blue-500' : ''
         }`}
         style={{ paddingLeft: `${depth * 12 + 28}px` }}
       >
-        <File className="w-4 h-4 text-gray-400" />
-        <span className="text-sm text-gray-300">{node.name}</span>
+        <File className={`w-4 h-4 ${isSelected ? 'text-blue-400' : 'text-gray-400'}`} />
+        <span className={`text-sm ${isSelected ? 'text-blue-300 font-medium' : 'text-gray-300'}`}>
+          {node.name}
+        </span>
       </div>
     );
   };
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-3 border-b border-[#30363d]">
-        <div className="flex items-center gap-2 bg-[#0d1117] border border-[#30363d] rounded px-3 py-1.5">
-          <Search className="w-4 h-4 text-gray-500" />
-          <input
-            type="text"
-            placeholder="Search files..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
-          />
-        </div>
+    <div className="h-full flex flex-col bg-[#0d1117]">
+      {/* Tabs */}
+      <div className="flex border-b border-[#30363d]">
+        <button
+          onClick={() => setActiveTab('files')}
+          className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'files'
+              ? 'text-blue-400 border-b-2 border-blue-400 bg-[#161b22]'
+              : 'text-gray-400 hover:text-gray-300'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <FileText className="w-4 h-4" />
+            Files
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('search')}
+          className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'search'
+              ? 'text-blue-400 border-b-2 border-blue-400 bg-[#161b22]'
+              : 'text-gray-400 hover:text-gray-300'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Search className="w-4 h-4" />
+            Search
+          </div>
+        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
-        <div className="mb-2 px-2 py-1">
-          <span className="text-xs font-semibold text-gray-500 uppercase">Files</span>
+      {/* Search Input */}
+      {activeTab === 'search' && (
+        <div className="p-3 border-b border-[#30363d]">
+          <div className="flex items-center gap-2 bg-[#161b22] border border-[#30363d] rounded px-3 py-1.5">
+            <Search className="w-4 h-4 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Search in files..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
+            />
+          </div>
+          {searchMatches.length > 0 && (
+            <div className="mt-2 text-xs text-gray-400">
+              {searchMatches.length} results in {Object.keys(groupMatchesByFile).length} files
+            </div>
+          )}
         </div>
-        {fileStructure.map((node) => renderNode(node))}
+      )}
+
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto p-2">
+        {activeTab === 'files' ? (
+          <>
+            <div className="mb-2 px-2 py-1">
+              <span className="text-xs font-semibold text-gray-500 uppercase">Files</span>
+            </div>
+            {fileStructure.map((node) => renderNode(node))}
+          </>
+        ) : (
+          <>
+            {searchQuery.trim() === '' ? (
+              <div className="text-center text-gray-500 text-sm mt-8">
+                Enter a search term to find in files
+              </div>
+            ) : searchMatches.length === 0 ? (
+              <div className="text-center text-gray-500 text-sm mt-8">
+                No results found
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {Object.entries(groupMatchesByFile).map(([filePath, matches]) => (
+                  <div key={filePath} className="mb-3">
+                    <div className="flex items-center gap-2 px-2 py-1 text-sm text-gray-300 font-medium">
+                      <File className="w-4 h-4 text-blue-400" />
+                      <span>{filePath}</span>
+                      <span className="text-xs text-gray-500">({matches.length})</span>
+                    </div>
+                    <div className="space-y-0.5">
+                      {matches.map((match) => (
+                        <div
+                          key={`${match.filePath}-${match.line}`}
+                          onClick={() => handleMatchSelect(match, match.matchIndex)}
+                          className={`px-2 py-1.5 ml-6 cursor-pointer rounded text-xs hover:bg-[#21262d] transition-colors ${
+                            selectedMatchIndex === match.matchIndex
+                              ? 'bg-blue-600/20 border-l-2 border-blue-500'
+                              : ''
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <span className="text-gray-300 truncate flex-1">
+                              {match.lineContent}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

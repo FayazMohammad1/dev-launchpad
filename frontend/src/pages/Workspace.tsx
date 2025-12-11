@@ -294,6 +294,7 @@ function Workspace(_: WorkspaceProps) {
                         file={selectedFile}
                         files={projectFiles}
                         onContentChange={handleFileChange}
+                        onFileSelect={setSelectedFile}
                       />
                     ) : viewMode === 'database' ? (
                       <div className="h-full flex items-center justify-center text-gray-400">Database view coming soon</div>
