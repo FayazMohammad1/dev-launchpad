@@ -101,6 +101,47 @@ function CodeEditor({ file, files, onContentChange }: CodeEditorProps) {
             readOnly: false,
             wordWrap: "on",
           }}
+          beforeMount={(monaco) => {
+            // Configure TypeScript/JavaScript compiler options
+            monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+              target: monaco.languages.typescript.ScriptTarget.ES2020,
+              module: monaco.languages.typescript.ModuleKind.ESNext,
+              jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
+              jsxFactory: "React",
+              jsxFragmentFactory: "React.Fragment",
+              moduleResolution: monaco.languages.typescript.ModuleResolutionKind.Bundler,
+              strict: true,
+              esModuleInterop: true,
+              skipLibCheck: true,
+              forceConsistentCasingInFileNames: true,
+              allowImportingTsExtensions: true,
+              lib: ["ES2020", "DOM", "DOM.Iterable"],
+            });
+
+            // Add React type definitions
+            monaco.languages.typescript.typescriptDefaults.addExtraLib(
+              `
+                declare namespace React {
+                  interface ReactElement<P = any, T extends string | JSXElementConstructor<any> = string | JSXElementConstructor<any>> {
+                    type: T;
+                    props: P;
+                    key: string | number | null;
+                  }
+                  type JSXElementConstructor<P> = (props: P & { children?: ReactNode }) => ReactElement<any, any> | null;
+                  type ReactNode = ReactElement | string | number | ReactFragment | ReactPortal | boolean | null | undefined;
+                  type ReactFragment = {} | Iterable<ReactNode>;
+                  type ReactPortal = {
+                    $$typeof: symbol;
+                    key: null | string | number;
+                    children: ReactNode;
+                    containerInfo: any;
+                    implementation: any;
+                  };
+                }
+              `,
+              "file:///node_modules/@types/react/index.d.ts"
+            );
+          }}
         />
       </div>
     </div>
