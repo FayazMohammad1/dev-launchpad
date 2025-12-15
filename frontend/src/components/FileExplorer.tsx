@@ -23,7 +23,7 @@ interface SearchMatch {
 
 type TabType = 'files' | 'search';
 
-// TODO: (3 files are missing package-lock.json, .env, .gitignore)
+// TODO: (package-lock is missing, need to check with web containers)
 function FileExplorer({ onFileSelect, selectedFile, files }: FileExplorerProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
     new Set([])
