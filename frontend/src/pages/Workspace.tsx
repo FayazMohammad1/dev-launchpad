@@ -255,7 +255,7 @@ function Workspace(_: WorkspaceProps) {
         <PanelGroup direction="horizontal">
           
           {/* Left Sidebar */}
-          <Panel defaultSize={20} minSize={20} maxSize={20}>
+          <Panel defaultSize={25} minSize={25} maxSize={25}>
             <div className="h-full bg-[#0d1117] border-r border-[#30363d]">
               <Steps
                 prompt={prompt}
