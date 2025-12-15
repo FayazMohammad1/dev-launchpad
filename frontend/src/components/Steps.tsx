@@ -46,9 +46,16 @@ function Steps({ prompt, files, uiPrompts, chat, messages = [], onSendMessage, s
       }
     }
 
-    // Filter out template prompts (they contain boltAction/boltArtifact tags)
+    // Filter out template prompts (they contain boltAction/boltArtifact tags or system guidelines)
     const isTemplatePrompt = (content: string) => {
-      return content.includes('<boltAction') || content.includes('<boltArtifact') || content.includes('Return all these files');
+      return (
+        content.includes('<boltAction') || 
+        content.includes('<boltArtifact') || 
+        content.includes('Return all these files') ||
+        content.includes('For all designs I ask you to make') ||
+        content.includes('By default, this template supports') ||
+        content.includes('Make webpages that are fully featured and worthy for production')
+      );
     };
 
     allMessages.forEach((msg, idx) => {
