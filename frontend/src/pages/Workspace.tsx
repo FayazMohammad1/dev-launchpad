@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, Code, Database, Settings, Github, Upload, Download } from 'lucide-react';
 import JSZip from 'jszip';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { Panel, PanelGroup, PanelResizeHandle, ImperativePanelHandle } from 'react-resizable-panels';
 
 import Steps from '../components/Steps';
 import FileExplorer from '../components/FileExplorer';
@@ -22,6 +22,9 @@ type ChatMessage = {
   content: string;
 };
 
+const EXPLORER_COLLAPSE_THRESHOLD = 8;
+const TERMINAL_COLLAPSE_THRESHOLD = 8;
+
 function Workspace(_: WorkspaceProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -36,6 +39,10 @@ function Workspace(_: WorkspaceProps) {
   const [projectFiles, setProjectFiles] = useState<Record<string, string>>(
     () => initialFiles || {}
   );
+  const explorerPanelRef = useRef<ImperativePanelHandle | null>(null);
+  const terminalPanelRef = useRef<ImperativePanelHandle | null>(null);
+  const [lastExplorerSize, setLastExplorerSize] = useState<number>(22);
+  const [lastTerminalSize, setLastTerminalSize] = useState<number>(30);
 
   const initialMessages = useMemo<ChatMessage[]>(() => {
     const seeded: ChatMessage[] = [];
@@ -270,7 +277,24 @@ function Workspace(_: WorkspaceProps) {
             <PanelGroup direction="horizontal">
               {viewMode === 'code' && (
                 <>
-                  <Panel defaultSize={20} minSize={20} maxSize={30}>
+                  <Panel
+                    ref={explorerPanelRef}
+                    defaultSize={22}
+                    minSize={EXPLORER_COLLAPSE_THRESHOLD}
+                    maxSize={32}
+                    collapsible
+                    collapsedSize={0}
+                    onResize={(size) => {
+                      if (size <= EXPLORER_COLLAPSE_THRESHOLD) {
+                        explorerPanelRef.current?.collapse();
+                        return;
+                      }
+                      setLastExplorerSize(size);
+                    }}
+                    onExpand={() => {
+                      explorerPanelRef.current?.resize(lastExplorerSize || 22);
+                    }}
+                  >
                     <div className="h-full bg-[#0d1117] border-r border-[#30363d]">
                       <FileExplorer
                         onFileSelect={setSelectedFile}
@@ -307,7 +331,24 @@ function Workspace(_: WorkspaceProps) {
                     <>
                       <PanelResizeHandle className="h-1 bg-[#30363d] hover:bg-blue-600 transition-colors" />
 
-                      <Panel defaultSize={30} minSize={15} maxSize={50}>
+                      <Panel
+                        ref={terminalPanelRef}
+                        defaultSize={30}
+                        minSize={TERMINAL_COLLAPSE_THRESHOLD}
+                        maxSize={50}
+                        collapsible
+                        collapsedSize={0}
+                        onResize={(size) => {
+                          if (size <= TERMINAL_COLLAPSE_THRESHOLD) {
+                            terminalPanelRef.current?.collapse();
+                            return;
+                          }
+                          setLastTerminalSize(size);
+                        }}
+                        onExpand={() => {
+                          terminalPanelRef.current?.resize(lastTerminalSize || 30);
+                        }}
+                      >
                         <Terminal
                           terminals={terminals}
                           onAddTerminal={addTerminal}

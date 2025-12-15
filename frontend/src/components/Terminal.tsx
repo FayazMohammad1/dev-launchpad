@@ -30,13 +30,15 @@ function Terminal({ terminals, onAddTerminal, onRemoveTerminal }: TerminalProps)
           {terminals.map((terminal, index) => (
             <div
               key={index}
-              className={`flex items-center gap-2 px-3 py-2 border-r border-[#30363d] cursor-pointer ${
+              className={`flex items-center gap-2 px-3 py-2 border-r border-[#30363d] cursor-pointer min-w-0 ${
                 activeTab === index ? 'bg-[#0d1117]' : 'hover:bg-[#21262d]'
               }`}
               onClick={() => setActiveTab(index)}
             >
-              <TerminalIcon className="w-4 h-4 text-gray-400" />
-              <span className="text-sm text-gray-300">{terminal}</span>
+              <TerminalIcon className="w-4 h-4 text-gray-400 shrink-0" />
+              <span className="text-sm text-gray-300 truncate min-w-0 max-w-[140px]">
+                {terminal}
+              </span>
               {terminals.length > 1 && (
                 <button
                   onClick={(e) => {
@@ -46,7 +48,7 @@ function Terminal({ terminals, onAddTerminal, onRemoveTerminal }: TerminalProps)
                       setActiveTab(index - 1);
                     }
                   }}
-                  className="hover:text-white text-gray-500 transition-colors"
+                  className="hover:text-white text-gray-500 transition-colors shrink-0"
                 >
                   <X className="w-3 h-3" />
                 </button>

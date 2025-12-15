@@ -231,20 +231,20 @@ function FileExplorer({ onFileSelect, selectedFile, files }: FileExplorerProps) 
           <div
             onClick={() => toggleFolder(node.path)}
             onMouseDown={(e) => e.preventDefault()}
-            className="flex items-center gap-2 px-2 py-1.5 hover:bg-[#21262d] cursor-pointer rounded group select-none"
+            className="flex items-center gap-2 px-2 py-1.5 hover:bg-[#21262d] cursor-pointer rounded group select-none min-w-0"
             style={{ paddingLeft: `${depth * 12 + 8}px` }}
           >
             {isExpanded ? (
-              <ChevronDown className="w-4 h-4 text-gray-400" />
+              <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
             ) : (
-              <ChevronRight className="w-4 h-4 text-gray-400" />
+              <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
             )}
             {isExpanded ? (
-              <FolderOpen className="w-4 h-4 text-blue-400" />
+              <FolderOpen className="w-4 h-4 text-blue-400 shrink-0" />
             ) : (
-              <Folder className="w-4 h-4 text-blue-400" />
+              <Folder className="w-4 h-4 text-blue-400 shrink-0" />
             )}
-            <span className="text-sm text-gray-300">{node.name}</span>
+            <span className="text-sm text-gray-300 truncate min-w-0">{node.name}</span>
           </div>
           {isExpanded && node.children && (
             <div>{node.children.map((child) => renderNode(child, depth + 1))}</div>
@@ -257,13 +257,13 @@ function FileExplorer({ onFileSelect, selectedFile, files }: FileExplorerProps) 
       <div
         key={node.path}
         onClick={() => onFileSelect(node.path)}
-        className={`flex items-center gap-2 px-2 py-1.5 hover:bg-[#21262d] cursor-pointer rounded transition-colors ${
+        className={`flex items-center gap-2 px-2 py-1.5 hover:bg-[#21262d] cursor-pointer rounded transition-colors min-w-0 ${
           isSelected ? 'bg-blue-600/20 border-l-2 border-blue-500' : ''
         }`}
         style={{ paddingLeft: `${depth * 12 + 28}px` }}
       >
-        <File className={`w-4 h-4 ${isSelected ? 'text-blue-400' : 'text-gray-400'}`} />
-        <span className={`text-sm ${isSelected ? 'text-blue-300 font-medium' : 'text-gray-300'}`}>
+        <File className={`w-4 h-4 shrink-0 ${isSelected ? 'text-blue-400' : 'text-gray-400'}`} />
+        <span className={`text-sm truncate min-w-0 ${isSelected ? 'text-blue-300 font-medium' : 'text-gray-300'}`}>
           {node.name}
         </span>
       </div>
@@ -283,7 +283,7 @@ function FileExplorer({ onFileSelect, selectedFile, files }: FileExplorerProps) 
           }`}
         >
           <div className="flex items-center justify-center gap-2">
-            <FileText className="w-4 h-4" />
+            <FileText className="w-4 h-4 shrink-0" />
             Files
           </div>
         </button>
@@ -296,7 +296,7 @@ function FileExplorer({ onFileSelect, selectedFile, files }: FileExplorerProps) 
           }`}
         >
           <div className="flex items-center justify-center gap-2">
-            <Search className="w-4 h-4" />
+            <Search className="w-4 h-4 shrink-0" />
             Search
           </div>
         </button>
@@ -346,9 +346,9 @@ function FileExplorer({ onFileSelect, selectedFile, files }: FileExplorerProps) 
               <div className="space-y-1">
                 {Object.entries(groupMatchesByFile).map(([filePath, matches]) => (
                   <div key={filePath} className="mb-3">
-                    <div className="flex items-center gap-2 px-2 py-1 text-sm text-gray-300 font-medium">
-                      <File className="w-4 h-4 text-blue-400" />
-                      <span>{filePath}</span>
+                    <div className="flex items-center gap-2 px-2 py-1 text-sm text-gray-300 font-medium min-w-0">
+                      <File className="w-4 h-4 text-blue-400 shrink-0" />
+                      <span className="truncate min-w-0">{filePath}</span>
                       <span className="text-xs text-gray-500">({matches.length})</span>
                     </div>
                     <div className="space-y-0.5">
