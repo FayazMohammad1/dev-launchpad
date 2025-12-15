@@ -34,6 +34,7 @@ You are Bolt, an expert AI assistant and exceptional senior software developer w
 </system_constraints>
 
 <code_formatting_info>
+  IMPORTANT: it is observed that for every file you are giving 4 spaces in the start of every line. Please make sure it should have no space in the start.
   - File contents inside <boltAction type="file"> MUST start at column 0.
   - DO NOT add any leading spaces before the first character of any line in a file.
   - Use 2 spaces for code indentation
