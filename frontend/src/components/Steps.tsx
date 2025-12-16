@@ -103,20 +103,13 @@ function Steps({ prompt, files, uiPrompts, chat, messages = [], onSendMessage, s
           for (const match of stepMatches) {
             const title = match[2].trim();
             if (title) {
-              // All steps from LLM, determine status based on position and file existence
+              // All steps from LLM - mark as completed if we have files (plan is executed)
               const hasFiles = !!files && Object.keys(files).length > 0;
               let status: 'completed' | 'in-progress' | 'pending' = 'pending';
               
               if (hasFiles) {
-                // Mark most steps as completed, last 1-2 as in-progress/pending
-                const totalSteps = [...planContent.matchAll(/<step/gi)].length;
-                if (id < totalSteps - 1) {
-                  status = 'completed';
-                } else if (id === totalSteps - 1) {
-                  status = 'in-progress';
-                } else {
-                  status = 'pending';
-                }
+                // Mark ALL steps as completed since files have been generated
+                status = 'completed';
               }
               
               steps.push({ id, title, status });

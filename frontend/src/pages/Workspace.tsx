@@ -68,7 +68,7 @@ function Workspace(_: WorkspaceProps) {
   const [sending, setSending] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
 
-  const { webContainer, bootError } = useWebContainer(projectFiles);
+  const { webContainer, bootError, isBootReady } = useWebContainer(projectFiles);
 
   // Log boot issues to console only (UI overlay disabled per request)
   useEffect(() => {
@@ -312,7 +312,7 @@ function Workspace(_: WorkspaceProps) {
                 <PanelGroup direction="vertical">
                   <Panel defaultSize={70} minSize={30}>
                     {viewMode === 'preview' ? (
-                      <Preview webContainer={webContainer} />
+                      <Preview webContainer={webContainer} isBootReady={isBootReady} bootError={bootError} />
                     ) : viewMode === 'code' ? (
                       <CodeEditor
                         file={selectedFile}
