@@ -77,6 +77,23 @@ function Workspace(_: WorkspaceProps) {
     }
   }, [bootError]);
 
+  useEffect(() => {
+    function handleLockfile(e: Event) {
+      const { path, contents } = (e as CustomEvent).detail;
+
+      console.log('[workspace] received generated lockfile');
+
+      setProjectFiles((prev) => ({
+        ...(prev || {}),
+        [path]: contents,
+      }));
+    }
+
+    window.addEventListener('webcontainer:lockfile', handleLockfile);
+    return () =>
+      window.removeEventListener('webcontainer:lockfile', handleLockfile);
+  }, []);
+
   const addTerminal = () => {
     setTerminals([...terminals, `Terminal ${terminals.length + 1}`]);
   };

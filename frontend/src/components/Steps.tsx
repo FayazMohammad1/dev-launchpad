@@ -25,6 +25,7 @@ interface StepItem {
 
 function Steps({ prompt, files, uiPrompts, chat, messages = [], onSendMessage, sending = false, error }: StepsProps) {
   const [messageInput, setMessageInput] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
 
   // Parse each model response to extract intro, plan, and key features
   const parsedConversation = useMemo(() => {
@@ -167,9 +168,17 @@ function Steps({ prompt, files, uiPrompts, chat, messages = [], onSendMessage, s
     if (!onSendMessage) return;
     const text = messageInput.trim();
     if (!text || sending) return;
+    setMessageInput('');
+
+    // Send the message asynchronously
     const ok = await onSendMessage(text);
-    if (ok) {
-      setMessageInput('');
+
+    if (!ok) {
+      // Set error message if sending fails
+      setLocalError('Failed to send message');
+    } else {
+      // Optionally, clear the error if message is sent successfully
+      setLocalError(null);
     }
   };
 
@@ -266,7 +275,7 @@ function Steps({ prompt, files, uiPrompts, chat, messages = [], onSendMessage, s
 
       {/* Follow-up input at bottom */}
       <div className="border-t border-[#30363d] p-4 space-y-2">
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {localError && <p className="text-xs text-red-400">{localError}</p>}
         <textarea
           value={messageInput}
           onChange={(e) => setMessageInput(e.target.value)}

@@ -130,6 +130,31 @@ function Preview({ webContainer, isBootReady = false, bootError }: PreviewProps)
         }
 
         console.log('[preview] step 3: npm install successful, spawning dev server...');
+
+        try {
+          const lockfile = await container.fs.readFile(
+            '/package-lock.json',
+            'utf-8'
+          );
+
+          console.log('[preview] package-lock.json generated');
+
+          // Send it back to parent (Workspace / state)
+          window.dispatchEvent(
+            new CustomEvent('webcontainer:lockfile', {
+              detail: {
+                path: 'package-lock.json',
+                contents: lockfile,
+              },
+            })
+          );
+        } catch (err) {
+          console.warn(
+            '[preview] package-lock.json not found (npm install may have failed)',
+            err
+          );
+        }
+
         setInstallPhase('starting-server');
         addInstallOutput('🚀 Starting dev server...');
         
