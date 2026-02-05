@@ -10,6 +10,7 @@ import CodeEditor from '../components/CodeEditor';
 import Terminal from '../components/Terminal';
 import Preview from '../components/Preview';
 import { useWebContainer } from '../hooks/useWebContainer';
+import { useTerminalOutput } from '../hooks/useTerminalOutput';
 import parseBoltArtifact from '../lib/boltParser';
 import { CHAT_URL } from '../lib/config';
 
@@ -35,14 +36,15 @@ function Workspace(_: WorkspaceProps) {
 
   const [viewMode, setViewMode] = useState<ViewMode>('code');
   const [selectedFile, setSelectedFile] = useState<string>('src/App.tsx');
-  const [terminals, setTerminals] = useState<string[]>(['Terminal 1']);
   const [projectFiles, setProjectFiles] = useState<Record<string, string>>(
     () => initialFiles || {}
   );
   const explorerPanelRef = useRef<ImperativePanelHandle | null>(null);
   const terminalPanelRef = useRef<ImperativePanelHandle | null>(null);
   const [lastExplorerSize, setLastExplorerSize] = useState<number>(22);
-  const [lastTerminalSize, setLastTerminalSize] = useState<number>(30);
+  const [lastTerminalSize, setLastTerminalSize] = useState<number>(25);
+
+  const { terminalOutput } = useTerminalOutput(projectFiles);
 
   const initialMessages = useMemo<ChatMessage[]>(() => {
     const seeded: ChatMessage[] = [];
@@ -80,7 +82,6 @@ function Workspace(_: WorkspaceProps) {
   useEffect(() => {
     function handleLockfile(e: Event) {
       const { path, contents } = (e as CustomEvent).detail;
-
       console.log('[workspace] received generated lockfile');
 
       setProjectFiles((prev) => ({
@@ -93,14 +94,6 @@ function Workspace(_: WorkspaceProps) {
     return () =>
       window.removeEventListener('webcontainer:lockfile', handleLockfile);
   }, []);
-
-  const addTerminal = () => {
-    setTerminals([...terminals, `Terminal ${terminals.length + 1}`]);
-  };
-
-  const removeTerminal = (index: number) => {
-    setTerminals(terminals.filter((_, i) => i !== index));
-  };
 
   const handleBack = () => {
     navigate('/');
@@ -327,7 +320,7 @@ function Workspace(_: WorkspaceProps) {
 
               <Panel defaultSize={80}>
                 <PanelGroup direction="vertical">
-                  <Panel defaultSize={70} minSize={30}>
+                  <Panel defaultSize={viewMode === 'code' ? 75 : 100} minSize={30}>
                     {viewMode === 'preview' ? (
                       <Preview webContainer={webContainer} isBootReady={isBootReady} bootError={bootError} />
                     ) : viewMode === 'code' ? (
@@ -344,13 +337,13 @@ function Workspace(_: WorkspaceProps) {
                     )}
                   </Panel>
 
-                  {terminals.length > 0 && (
+                  {viewMode === 'code' && (
                     <>
                       <PanelResizeHandle className="h-1 bg-[#30363d] hover:bg-blue-600 transition-colors" />
 
                       <Panel
                         ref={terminalPanelRef}
-                        defaultSize={30}
+                        defaultSize={25}
                         minSize={TERMINAL_COLLAPSE_THRESHOLD}
                         maxSize={50}
                         collapsible
@@ -363,14 +356,10 @@ function Workspace(_: WorkspaceProps) {
                           setLastTerminalSize(size);
                         }}
                         onExpand={() => {
-                          terminalPanelRef.current?.resize(lastTerminalSize || 30);
+                          terminalPanelRef.current?.resize(lastTerminalSize || 25);
                         }}
                       >
-                        <Terminal
-                          terminals={terminals}
-                          onAddTerminal={addTerminal}
-                          onRemoveTerminal={removeTerminal}
-                        />
+                        <Terminal output={terminalOutput} />
                       </Panel>
                     </>
                   )}
