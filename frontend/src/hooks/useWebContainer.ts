@@ -8,6 +8,12 @@ let sharedWebContainer: WebContainer | null = null;
 let bootPromise: Promise<WebContainer> | null = null;
 let bootError: string | null = null;
 
+// Persistent state for optimizations (Bolt-level)
+let devServerStarted: boolean = false;
+let devServerUrl: string | null = null;
+let nodeModulesInstalled: boolean = false;
+let lastMountedFiles: Set<string> = new Set();
+
 // ==============================
 // File tree builder
 // ==============================
@@ -27,6 +33,12 @@ function buildFileTree(
   }
 
   for (const [fullPath, contents] of Object.entries(files)) {
+    // NEVER touch node_modules - Bolt pattern
+    if (fullPath.startsWith('node_modules/') || fullPath === 'node_modules') {
+      console.log('[buildFileTree] skipping node_modules path:', fullPath);
+      continue;
+    }
+
     const parts = fullPath.split('/').filter(Boolean);
     if (parts.length === 0) continue;
 
@@ -154,24 +166,59 @@ export function useWebContainer(
   // Build file tree
   const fileTree = useMemo(() => buildFileTree(files), [files]);
 
-  // Mount files when container or files change
+  // Write files incrementally when container or files change (Bolt pattern)
   useEffect(() => {
     if (!webContainer) {
-      console.log('[useWebContainer] no container yet, skipping mount');
+      console.log('[useWebContainer] no container yet, skipping file operations');
       return;
     }
 
-    async function mountFiles() {
+    async function writeFiles() {
       try {
-        console.log(
-          '[useWebContainer] mounting files:',
-          Object.keys(fileTree)
-        );
+        if (!files) {
+          console.log('[useWebContainer] no files to write');
+          return;
+        }
 
+        console.log('[useWebContainer] writing files incrementally (Bolt pattern)');
         const start = Date.now();
-        await webContainer.mount(fileTree);
+        
+        const currentFiles = new Set(Object.keys(files).filter(
+          path => !path.startsWith('node_modules/') && path !== 'node_modules'
+        ));
+
+        // Write new or modified files
+        for (const [fullPath, contents] of Object.entries(files)) {
+          // Skip node_modules
+          if (fullPath.startsWith('node_modules/') || fullPath === 'node_modules') {
+            continue;
+          }
+
+          try {
+            // Ensure parent directory exists
+            const parts = fullPath.split('/').filter(Boolean);
+            if (parts.length > 1) {
+              const dirPath = parts.slice(0, -1).join('/');
+              try {
+                await webContainer.fs.mkdir(dirPath, { recursive: true });
+              } catch {
+                // Directory might already exist
+              }
+            }
+
+            // Write file
+            await webContainer.fs.writeFile(fullPath, contents as string);
+            console.log('[useWebContainer] wrote file:', fullPath);
+          } catch (err) {
+            console.error('[useWebContainer] failed to write file:', fullPath, err);
+          }
+        }
+
+        // Update tracked files
+        lastMountedFiles = currentFiles;
+
         console.log(
-          `[useWebContainer] mount completed in ${Date.now() - start}ms`
+          `[useWebContainer] incremental write completed in ${Date.now() - start}ms`
         );
 
         try {
@@ -181,16 +228,44 @@ export function useWebContainer(
           /* ignore */
         }
       } catch (err) {
-        console.error('[useWebContainer] mount failed:', err);
+        console.error('[useWebContainer] file write failed:', err);
       }
     }
 
-    mountFiles();
-  }, [webContainer, fileTree]);
+    writeFiles();
+  }, [webContainer, files]);
 
   return {
     webContainer,
     bootError: bootErrorState,
     isBootReady,
   };
+}
+
+// ==============================
+// Dev server state management (Bolt pattern)
+// ==============================
+export function isDevServerRunning(): boolean {
+  return devServerStarted;
+}
+
+export function getDevServerUrl(): string | null {
+  return devServerUrl;
+}
+
+export function setDevServerRunning(running: boolean, url?: string) {
+  devServerStarted = running;
+  if (url) {
+    devServerUrl = url;
+  }
+  console.log('[webcontainer] dev server state updated:', { running, url });
+}
+
+export function isNodeModulesInstalled(): boolean {
+  return nodeModulesInstalled;
+}
+
+export function setNodeModulesInstalled(installed: boolean) {
+  nodeModulesInstalled = installed;
+  console.log('[webcontainer] node_modules state updated:', installed);
 }

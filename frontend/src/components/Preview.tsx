@@ -1,6 +1,13 @@
 import { RefreshCw, ExternalLink, Loader2, AlertCircle } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { WebContainer } from '@webcontainer/api';
+import {
+  isDevServerRunning,
+  getDevServerUrl,
+  setDevServerRunning,
+  isNodeModulesInstalled,
+  setNodeModulesInstalled,
+} from '../hooks/useWebContainer';
 
 interface PreviewProps {
   webContainer?: WebContainer;
@@ -46,14 +53,36 @@ function Preview({ webContainer, isBootReady = false, bootError }: PreviewProps)
 
     let cancelled = false;
 
+    // Smart npm install - check if node_modules exists (Bolt pattern)
     async function installDependencies() {
       try {
-        console.log('[preview] ===== STARTING NPM INSTALL =====');
-        console.log('[preview] spawning npm install process...');
-        addInstallOutput('📦 Starting npm install...');
+        // Check if node_modules already exists
+        if (isNodeModulesInstalled()) {
+          console.log('[preview] node_modules already installed (cached state), skipping');
+          addInstallOutput('✅ node_modules exists, skipping install');
+          return 0;
+        }
+
+        try {
+          await container.fs.stat('node_modules');
+          console.log('[preview] node_modules directory exists, skipping install');
+          addInstallOutput('✅ node_modules exists, skipping install');
+          setNodeModulesInstalled(true);
+          return 0;
+        } catch {
+          // node_modules doesn't exist, proceed with install
+          console.log('[preview] ===== STARTING NPM INSTALL =====');
+          console.log('[preview] spawning npm install process...');
+          addInstallOutput('📦 Starting npm install...');
+        }
         
-        // Use npm cache for faster installs
-        const installProcess = await container.spawn('npm', ['install', '--prefer-offline', '--no-audit']);
+        // Use npm cache for faster installs (Bolt pattern)
+        // Don't specify explicit cache path - let npm use its default in WebContainer
+        const installProcess = await container.spawn('npm', [
+          'install',
+          '--prefer-offline',
+          '--no-audit'
+        ]);
         console.log('[preview] npm install process spawned successfully');
 
         addInstallOutput('⏳ Installing dependencies...');
@@ -62,27 +91,26 @@ function Preview({ webContainer, isBootReady = false, bootError }: PreviewProps)
         let lastUpdate = Date.now();
         let installStartTime = Date.now();
 
-        const outputReader = installProcess.output.getReader();
-        const textDecoder = new TextDecoder();
-
-        try {
-          while (true) {
-            const { done, value } = await outputReader.read();
-            if (done) break;
-            
-            const text = textDecoder.decode(value, { stream: true });
-            console.log('[npm install output]', text);
-            
-            // Update install output every 500ms to avoid too many renders
-            const now = Date.now();
-            if (now - lastUpdate > 500) {
-              addInstallOutput(text.substring(0, 100));
-              lastUpdate = now;
+        // Read output in background to avoid blocking
+        installProcess.output.pipeTo(new WritableStream({
+          write(chunk) {
+            try {
+              const text = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
+              console.log('[npm install output]', text);
+              
+              // Update install output every 500ms to avoid too many renders
+              const now = Date.now();
+              if (now - lastUpdate > 500) {
+                addInstallOutput(text.substring(0, 100));
+                lastUpdate = now;
+              }
+            } catch (err) {
+              console.warn('[preview] error processing output chunk:', err);
             }
           }
-        } catch (err) {
+        })).catch(err => {
           console.warn('[preview] error reading install output:', err);
-        }
+        });
 
         console.log('[preview] waiting for install process to exit...');
         const exitCode = await installProcess.exit;
@@ -94,6 +122,8 @@ function Preview({ webContainer, isBootReady = false, bootError }: PreviewProps)
           throw new Error(`npm install failed with exit code ${exitCode}`);
         }
 
+        // Mark as installed
+        setNodeModulesInstalled(true);
         addInstallOutput(`✅ Dependencies installed (${Math.round(installDuration / 1000)}s)`);
         return exitCode;
       } catch (err: any) {
@@ -107,6 +137,20 @@ function Preview({ webContainer, isBootReady = false, bootError }: PreviewProps)
     async function startDevServer() {
       try {
         console.log('[preview] ===== STARTING DEV SERVER SETUP =====');
+        
+        // Check if dev server is already running (Bolt pattern)
+        if (isDevServerRunning()) {
+          const existingUrl = getDevServerUrl();
+          if (existingUrl) {
+            console.log('[preview] dev server already running at:', existingUrl);
+            addInstallOutput(`✅ Dev server already running at ${existingUrl}`);
+            setUrl(existingUrl);
+            setLoading(false);
+            setInstallPhase('server-ready');
+            return;
+          }
+        }
+
         setLoading(true);
         setError(null);
 
@@ -158,29 +202,31 @@ function Preview({ webContainer, isBootReady = false, bootError }: PreviewProps)
         setInstallPhase('starting-server');
         addInstallOutput('🚀 Starting dev server...');
         
+        // Start dev server only once (Bolt pattern)
         const devProcess = await container.spawn('npm', ['run', 'dev']);
         console.log('[preview] dev server process spawned');
 
-        // Pipe dev server output
-        const devReader = devProcess.output.getReader();
-        const textDecoder = new TextDecoder();
+        // Mark as started immediately to prevent duplicate spawns
+        setDevServerRunning(true);
 
-        try {
-          while (true) {
-            const { done, value } = await devReader.read();
-            if (done) break;
-            
-            const text = textDecoder.decode(value, { stream: true });
-            console.log('[npm run dev output]', text);
-            
-            // Show server startup messages
-            if (text.includes('VITE') || text.includes('ready') || text.includes('listening')) {
-              addInstallOutput(text.substring(0, 100));
+        // Pipe dev server output in background
+        devProcess.output.pipeTo(new WritableStream({
+          write(chunk) {
+            try {
+              const text = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
+              console.log('[npm run dev output]', text);
+              
+              // Show server startup messages
+              if (text.includes('VITE') || text.includes('ready') || text.includes('listening')) {
+                addInstallOutput(text.substring(0, 100));
+              }
+            } catch (err) {
+              console.warn('[preview] error processing dev output chunk:', err);
             }
           }
-        } catch (err) {
+        })).catch(err => {
           console.warn('[preview] error reading dev server output:', err);
-        }
+        });
 
         // Listen for server-ready event
         console.log('[preview] step 4: listening for server-ready event...');
@@ -199,6 +245,10 @@ function Preview({ webContainer, isBootReady = false, bootError }: PreviewProps)
             
             addInstallOutput(`✅ Server ready at ${serverUrl}`);
             console.log('[preview] setting URL state and marking loading as false');
+            
+            // Save dev server URL globally (Bolt pattern)
+            setDevServerRunning(true, serverUrl);
+            
             setUrl(serverUrl);
             setLoading(false);
             setInstallPhase('server-ready');
