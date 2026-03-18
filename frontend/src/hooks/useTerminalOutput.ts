@@ -164,7 +164,7 @@ export function useTerminalOutput(projectFiles: Record<string, string> | null) {
   }, [projectFiles]);
 
   return {
-    terminalOutput,
+    terminalOutpt: terminalOutput,
     addTerminalLine,
     clearTerminal,
   };
