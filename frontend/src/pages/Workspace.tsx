@@ -34,7 +34,7 @@ function Workspace(_: WorkspaceProps) {
   const template = (location.state && (location.state as any).template) || null;
   const chat = (location.state && (location.state as any).chat) || null;
 
-  const [viewMode, setViewMode] = useState<ViewMode>('code');
+  const [viewMode, setViewMode] = useState<ViewMode>('codes');
   const [selectedFile, setSelectedFile] = useState<string>('src/App.tsx');
   const [projectFiles, setProjectFiles] = useState<Record<string, string>>(
     () => initialFiles || {}

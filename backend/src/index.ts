@@ -99,11 +99,12 @@ app.post("/chat", async (req, res) => {
   }
 });
 
+const serverPort: number = "3000";
 
 /* ---------------------------------------------------------
    SERVER START
 --------------------------------------------------------- */
-app.listen(3000, () => {
+app.listen(serverPort, () => {
   console.log("Server running on port 3000");
 });
 
