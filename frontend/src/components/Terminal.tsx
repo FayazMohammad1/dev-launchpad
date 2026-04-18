@@ -114,7 +114,7 @@ function renderLine(line: string) {
   }
 
   if (line.startsWith('$')) {
-    return <span className={textGreen}>{line}</span>;
+    return <span className="text-green-400">{line}</span>;
   }
 
   if (line.includes('➜')) {

@@ -99,7 +99,7 @@ app.post("/chat", async (req, res) => {
   }
 });
 
-const serverPort: number = "3000";
+const serverPort: number = 3000;
 
 /* ---------------------------------------------------------
    SERVER START
